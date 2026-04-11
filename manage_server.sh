@@ -101,7 +101,7 @@ function start_server() {
     ensure_venv
     echo "Starting backend server..."
     pushd "$BACKEND_DIR" >/dev/null
-    nohup "$PYTHON" -m uvicorn "$APP_MODULE" --host "$HOST" --port "$PORT" --reload > "$LOG_FILE" 2>&1 &
+    nohup env PYTHONUNBUFFERED=1 "$PYTHON" -m uvicorn "$APP_MODULE" --host "$HOST" --port "$PORT" > "$LOG_FILE" 2>&1 &
     echo "$!" > "$PID_FILE"
     popd >/dev/null
     echo "Server started on $BASE_URL"

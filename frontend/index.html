@@ -1,444 +1,837 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Portfolio</title>
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bs-success-rgb: 76, 175, 80;
-            --bs-danger-rgb: 244, 67, 54;
+            --color-up: #16a34a;
+            --color-down: #dc2626;
+            --color-neutral: #6b7280;
+            --bg-main: #f1f5f9;
+            --card-radius: 0.875rem;
         }
-        body { 
-            background-color: #f4f7f6; 
-            font-family: 'Inter', sans-serif;
+        body { background: var(--bg-main); font-family: 'Inter', sans-serif; color: #1e293b; }
+
+        /* Navbar */
+        .navbar { box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+        /* Cards */
+        .summary-card {
+            border: none; border-radius: var(--card-radius);
+            box-shadow: 0 1px 4px rgba(0,0,0,.06);
+            transition: box-shadow .2s;
         }
-        .navbar {
-            box-shadow: 0 2px 4px rgba(0,0,0,.05);
+        .summary-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+        .section-card {
+            border: none; border-radius: var(--card-radius);
+            box-shadow: 0 1px 4px rgba(0,0,0,.06);
         }
-        .card {
-            border: none;
-            border-radius: .75rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,.04);
-            transition: all .2s ease-in-out;
+        .section-title {
+            font-size: .8rem; font-weight: 600; letter-spacing: .06em;
+            text-transform: uppercase; color: #64748b; margin-bottom: 1rem;
         }
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,.08);
+
+        /* Summary icon badges */
+        .icon-badge {
+            width: 44px; height: 44px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
         }
-        .table {
-            --bs-table-striped-bg: #fcfcfc;
+
+        /* Color helpers */
+        .text-up    { color: var(--color-up) !important; }
+        .text-down  { color: var(--color-down) !important; }
+        .text-neutral { color: var(--color-neutral) !important; }
+        .bg-up-soft   { background: rgba(22,163,74,.12); color: var(--color-up); }
+        .bg-down-soft { background: rgba(220,38,38,.12); color: var(--color-down); }
+
+        /* Period return pills */
+        .period-pill {
+            border-radius: 8px; padding: .25rem .6rem;
+            font-size: .78rem; font-weight: 600;
+            background: #f8fafc; border: 1px solid #e2e8f0;
         }
-        .table-hover > tbody > tr:hover > * {
-            --bs-table-accent-bg: #f5f5f5;
+        .period-pill.up   { background: rgba(22,163,74,.1);  color: var(--color-up);   border-color: transparent; }
+        .period-pill.down { background: rgba(220,38,38,.1);  color: var(--color-down); border-color: transparent; }
+
+        /* Table */
+        .holdings-table th {
+            font-size: .72rem; font-weight: 600; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: .05em;
+            border-bottom: 1px solid #e2e8f0; background: #f8fafc;
+            padding: .6rem .75rem;
         }
-        .table thead th {
-            border-bottom-width: 1px;
+        .holdings-table td { vertical-align: middle; padding: .65rem .75rem; border-color: #f1f5f9; }
+        .holdings-table tbody tr:hover td { background: #f8fafc; }
+        .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+        /* Risk gauge (HHI) */
+        .hhi-bar { height: 8px; border-radius: 4px; background: #e2e8f0; overflow: hidden; }
+        .hhi-fill { height: 100%; border-radius: 4px; transition: width .6s; }
+
+        /* Correlation heatmap */
+        .corr-table th, .corr-table td {
+            text-align: center; font-size: .72rem;
+            padding: .3rem .4rem; border: 1px solid #e2e8f0;
         }
-        .table td, .table th {
-            vertical-align: middle;
-            border-color: #f0f0f0;
+        .corr-table th { background: #f8fafc; font-weight: 600; }
+
+        /* Chart containers */
+        .chart-wrap { position: relative; }
+
+        /* Treemap fallback tiles */
+        .treemap-container { display: flex; flex-wrap: wrap; gap: 4px; min-height: 200px; }
+        .treemap-tile {
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 6px; color: #fff; font-weight: 600;
+            font-size: .7rem; text-align: center; padding: 4px;
+            cursor: default; transition: opacity .15s;
         }
-        .chart-container {
-            min-height: 240px;
-        }
-        .number-cell { text-align: right; }
-        .text-success { color: rgb(var(--bs-success-rgb)) !important; }
-        .text-danger { color: rgb(var(--bs-danger-rgb)) !important; }
+        .treemap-tile:hover { opacity: .85; }
+
+        /* Skeleton */
+        .skeleton { animation: shimmer 1.4s infinite linear; background: linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%); background-size: 400% 100%; border-radius: 6px; display: inline-block; }
+        @keyframes shimmer { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+        .skeleton-text { height: 14px; margin-bottom: 6px; }
+        .skeleton-h2   { height: 28px; }
+
+        /* Loading overlay */
+        #skeleton-overlay { position: fixed; inset: 0; background: var(--bg-main); z-index: 10; }
     </style>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
-    <div class="container-fluid">
-        <a class="navbar-brand d-flex align-items-center" href="#">
-            <i class="bi bi-bar-chart-line-fill fs-3 me-2"></i>
-            <span class="fw-bold fs-4">My Portfolio</span>
-        </a>
-        <div class="d-flex align-items-center">
-            <small id="last-synced" class="text-muted me-3"></small>
-            <button id="sync-button" class="btn btn-primary d-flex align-items-center">
-                <span id="sync-spinner" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
-                <i id="sync-icon" class="bi bi-arrow-repeat me-1"></i>
-                <span id="sync-text">Sync Now</span>
-            </button>
-            <button onclick="logout()" class="btn btn-outline-secondary btn-sm ms-2">로그아웃</button>
-        </div>
+<!-- Navbar -->
+<nav class="navbar navbar-light bg-white border-bottom px-3 py-2">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-bar-chart-line-fill fs-4 text-primary"></i>
+        <span class="fw-bold fs-5">My Portfolio</span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <span id="last-synced" class="text-muted" style="font-size:.78rem;"></span>
+        <button onclick="logout()" class="btn btn-sm btn-outline-secondary">로그아웃</button>
     </div>
 </nav>
 
-<main class="container py-5">
-
-    <!-- Skeleton Loader -->
-    <div id="skeleton-loader">
-        <div class="row g-4 mb-4">
-            <div class="col-lg-6">
-                <div class="card h-100 p-4 placeholder-glow">
-                    <span class="placeholder col-6"></span>
-                    <span class="placeholder col-8 mt-2"></span>
-                </div>
-            </div>
-            <div class="col-lg-6">
-                <div class="card h-100 p-4 placeholder-glow">
-                    <span class="placeholder col-6"></span>
-                    <span class="placeholder col-8 mt-2"></span>
-                </div>
-            </div>
+<!-- Skeleton / Loading -->
+<div id="skeleton-overlay" class="p-4">
+    <div class="container-xl">
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-4 col-xl"><div class="summary-card p-4"><div class="skeleton skeleton-text w-50"></div><div class="skeleton skeleton-h2 w-75 mt-2"></div></div></div>
+            <div class="col-6 col-md-4 col-xl"><div class="summary-card p-4"><div class="skeleton skeleton-text w-50"></div><div class="skeleton skeleton-h2 w-75 mt-2"></div></div></div>
+            <div class="col-6 col-md-4 col-xl"><div class="summary-card p-4"><div class="skeleton skeleton-text w-50"></div><div class="skeleton skeleton-h2 w-75 mt-2"></div></div></div>
+            <div class="col-6 col-md-6 col-xl"><div class="summary-card p-4"><div class="skeleton skeleton-text w-50"></div><div class="skeleton skeleton-h2 w-75 mt-2"></div></div></div>
+            <div class="col-6 col-md-6 col-xl"><div class="summary-card p-4"><div class="skeleton skeleton-text w-50"></div><div class="skeleton skeleton-h2 w-75 mt-2"></div></div></div>
         </div>
-        <div class="card placeholder-glow">
-            <div class="table-responsive">
-                <table class="table table-hover table-striped mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 25%;"><span class="placeholder col-4"></span></th>
-                            <th><span class="placeholder col-3"></span></th>
-                            <th><span class="placeholder col-3"></span></th>
-                            <th><span class="placeholder col-3"></span></th>
-                            <th><span class="placeholder col-3"></span></th>
-                            <th><span class="placeholder col-3"></span></th>
-                            <th><span class="placeholder col-3"></span></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Skeleton Rows -->
-                        <script>
-                            for (let i = 0; i < 5; i++) {
-                                document.write(`
-                                    <tr>
-                                        <td><span class="placeholder col-7"></span><br><span class="placeholder col-4"></span></td>
-                                        <td><span class="placeholder col-10"></span></td>
-                                        <td><span class="placeholder col-10"></span></td>
-                                        <td><span class="placeholder col-10"></span></td>
-                                        <td><span class="placeholder col-10"></span></td>
-                                        <td><span class="placeholder col-10"></span></td>
-                                        <td><span class="placeholder col-10"></span></td>
-                                    </tr>
-                                `);
-                            }
-                        </script>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <div class="section-card p-4"><div class="skeleton" style="height:300px;width:100%;"></div></div>
     </div>
+</div>
 
-    <div id="error-banner" class="alert alert-danger d-none mx-auto" role="alert" style="max-width: 960px;"></div>
+<!-- Error Banner -->
+<div id="error-banner" class="alert alert-danger m-3 d-none"></div>
 
-    <!-- Main Content -->
-    <div id="portfolio-content" class="d-none">
-        <div class="row g-4 mb-4">
-        <div class="col-lg-6">
-            <div class="card h-100 p-4">
-                <div class="d-flex align-items-center">
-                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                        <i class="bi bi-wallet2 fs-4"></i>
-                    </div>
-                    <div class="ms-3">
-                        <h5 class="card-title text-muted fw-normal mb-1">Total Value</h5>
-                        <p id="total-value" class="card-text h2 fw-bold"></p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-6">
-            <div class="card h-100 p-4">
-                <div class="d-flex align-items-center">
-                    <div id="profit-loss-icon-container" class="rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                        <i id="profit-loss-icon" class="bi fs-4"></i>
-                    </div>
-                    <div class="ms-3">
-                        <h5 class="card-title text-muted fw-normal mb-1">Total Profit/Loss</h5>
-                        <p id="total-profit-loss" class="card-text h2 fw-bold"></p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+<!-- Main Content -->
+<div id="main-content" class="d-none">
+<main class="container-xl py-4 px-3">
 
-    <div class="row g-4 mb-4">
-        <div class="col-12">
-            <div class="card h-100 p-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+    <!-- ① 요약 카드 5개 -->
+    <div class="row g-3 mb-4">
+        <!-- 총 평가금액 -->
+        <div class="col-6 col-md-4 col-xl">
+            <div class="summary-card p-4 h-100 bg-white">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="icon-badge" style="background:rgba(59,130,246,.12);color:#3b82f6;"><i class="bi bi-wallet2 fs-5"></i></div>
                     <div>
-                        <h5 class="card-title mb-1">Asset Allocation</h5>
-                        <small class="text-muted">현재 자산 비중</small>
+                        <div class="text-muted" style="font-size:.75rem;font-weight:600;">총 평가금액</div>
+                        <div id="card-total-value" class="fw-bold fs-4 mt-1">—</div>
                     </div>
-                    <span class="badge bg-secondary bg-opacity-15 text-secondary">현재가 기준</span>
                 </div>
-                <div class="chart-container">
+            </div>
+        </div>
+        <!-- 총 손익 -->
+        <div class="col-6 col-md-4 col-xl">
+            <div class="summary-card p-4 h-100 bg-white">
+                <div class="d-flex align-items-start gap-3">
+                    <div id="card-pl-icon" class="icon-badge" style="background:rgba(99,102,241,.12);color:#6366f1;"><i class="bi bi-graph-up fs-5"></i></div>
+                    <div>
+                        <div class="text-muted" style="font-size:.75rem;font-weight:600;">총 손익</div>
+                        <div id="card-total-pl" class="fw-bold fs-4 mt-1">—</div>
+                        <div id="card-total-plr" class="fw-semibold" style="font-size:.8rem;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 오늘의 손익 -->
+        <div class="col-6 col-md-4 col-xl">
+            <div class="summary-card p-4 h-100 bg-white">
+                <div class="d-flex align-items-start gap-3">
+                    <div id="card-today-icon" class="icon-badge" style="background:rgba(20,184,166,.12);color:#14b8a6;"><i class="bi bi-clock-history fs-5"></i></div>
+                    <div>
+                        <div class="text-muted" style="font-size:.75rem;font-weight:600;">오늘의 손익 <span class="text-muted fw-normal">(24h)</span></div>
+                        <div id="card-today-pl" class="fw-bold fs-4 mt-1">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 투자 원금 -->
+        <div class="col-6 col-md-6 col-xl">
+            <div class="summary-card p-4 h-100 bg-white">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="icon-badge" style="background:rgba(245,158,11,.12);color:#f59e0b;"><i class="bi bi-coin fs-5"></i></div>
+                    <div>
+                        <div class="text-muted" style="font-size:.75rem;font-weight:600;">투자 원금</div>
+                        <div id="card-investment" class="fw-bold fs-4 mt-1">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 포트폴리오 베타 -->
+        <div class="col-6 col-md-6 col-xl">
+            <div class="summary-card p-4 h-100 bg-white">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="icon-badge" style="background:rgba(168,85,247,.12);color:#a855f7;"><i class="bi bi-activity fs-5"></i></div>
+                    <div>
+                        <div class="text-muted" style="font-size:.75rem;font-weight:600;">포트폴리오 베타</div>
+                        <div id="card-beta" class="fw-bold fs-4 mt-1">계산 중...</div>
+                        <div class="text-muted" style="font-size:.7rem;">BTC 시장 대비</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ② 수익률 분석 -->
+    <div class="row g-3 mb-4">
+        <!-- 기간별 수익률 + 리스크 지표 -->
+        <div class="col-12 col-lg-5">
+            <div class="section-card bg-white p-4 h-100">
+                <div class="section-title">수익률 분석</div>
+                <!-- 기간별 수익률 -->
+                <div class="d-flex flex-wrap gap-2 mb-4" id="period-returns-row">
+                    <span class="text-muted" style="font-size:.8rem;">데이터 로딩 중...</span>
+                </div>
+                <!-- 리스크 지표 -->
+                <div class="section-title">리스크 지표</div>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="p-3 rounded-3" style="background:#f8fafc;">
+                            <div class="text-muted" style="font-size:.72rem;font-weight:600;">최대 낙폭 (MDD)</div>
+                            <div id="risk-mdd" class="fw-bold fs-5 mt-1 text-down">—</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 rounded-3" style="background:#f8fafc;">
+                            <div class="text-muted" style="font-size:.72rem;font-weight:600;">변동성 (연환산)</div>
+                            <div id="risk-vol" class="fw-bold fs-5 mt-1">—</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 rounded-3" style="background:#f8fafc;">
+                            <div class="text-muted" style="font-size:.72rem;font-weight:600;">샤프 지수</div>
+                            <div id="risk-sharpe" class="fw-bold fs-5 mt-1">—</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 rounded-3" style="background:#f8fafc;">
+                            <div class="text-muted" style="font-size:.72rem;font-weight:600;">HHI (집중도)</div>
+                            <div id="risk-hhi" class="fw-bold fs-5 mt-1">—</div>
+                            <div class="hhi-bar mt-1"><div id="hhi-fill" class="hhi-fill"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 누적 수익률 차트 -->
+        <div class="col-12 col-lg-7">
+            <div class="section-card bg-white p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="section-title mb-0">누적 수익률</div>
+                    <div class="btn-group btn-group-sm" id="history-period-btns">
+                        <button class="btn btn-outline-secondary" data-days="30">1개월</button>
+                        <button class="btn btn-outline-secondary active" data-days="90">3개월</button>
+                        <button class="btn btn-outline-secondary" data-days="180">6개월</button>
+                        <button class="btn btn-outline-secondary" data-days="365">1년</button>
+                    </div>
+                </div>
+                <div class="chart-wrap" style="height:240px;">
+                    <canvas id="cumulative-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ③ 보유 현황 테이블 -->
+    <div class="section-card bg-white mb-4">
+        <div class="p-4 pb-0">
+            <div class="section-title">보유 현황</div>
+        </div>
+        <div class="table-responsive">
+            <table class="table holdings-table mb-0">
+                <thead>
+                    <tr>
+                        <th>종목</th>
+                        <th class="num">매수가</th>
+                        <th class="num">현재가</th>
+                        <th class="num">수량</th>
+                        <th class="num">매수금액</th>
+                        <th class="num">평가금액</th>
+                        <th class="num">손익</th>
+                        <th class="num">수익률</th>
+                        <th class="num">비중</th>
+                        <th class="num">보유기간</th>
+                    </tr>
+                </thead>
+                <tbody id="holdings-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ④ 자산 배분 -->
+    <div class="row g-3 mb-4">
+        <!-- 도넛 차트 -->
+        <div class="col-12 col-md-5">
+            <div class="section-card bg-white p-4 h-100">
+                <div class="section-title">종목별 비중</div>
+                <div class="chart-wrap" style="height:260px;">
                     <canvas id="allocation-chart"></canvas>
                 </div>
             </div>
         </div>
+        <!-- 트리맵 -->
+        <div class="col-12 col-md-7">
+            <div class="section-card bg-white p-4 h-100">
+                <div class="section-title">자산 트리맵</div>
+                <div id="treemap-container" class="treemap-container"></div>
+            </div>
+        </div>
     </div>
 
-    <div class="card">
-        <div class="card-header">
-            <h2 class="h5 mb-0">Assets</h2>
+    <!-- ⑤ 수익 기여도 Top5 + 리스크 분석 -->
+    <div class="row g-3 mb-4">
+        <!-- Top 5 -->
+        <div class="col-12 col-md-5">
+            <div class="section-card bg-white p-4 h-100">
+                <div class="section-title">수익 기여도 Top 5</div>
+                <div id="top5-list"></div>
+            </div>
         </div>
-        <div class="table-responsive">
-            <table class="table table-hover table-striped mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width: 25%;">Name</th>
-                        <th class="number-cell">Quantity</th>
-                        <th class="number-cell">Avg. Price</th>
-                        <th class="number-cell">Current Price</th>
-                        <th class="number-cell">Total Value</th>
-                        <th class="number-cell">Profit/Loss</th>
-                        <th class="number-cell">P/L Rate</th>
-                    </tr>
-                </thead>
-                <tbody id="assets-table-body">
-                    <!-- Asset rows will be injected here -->
-                </tbody>
-            </table>
+        <!-- 상관관계 매트릭스 -->
+        <div class="col-12 col-md-7">
+            <div class="section-card bg-white p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="section-title mb-0">상관관계 매트릭스</div>
+                    <button id="corr-refresh-btn" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-repeat"></i> 불러오기
+                    </button>
+                </div>
+                <div id="corr-container">
+                    <p class="text-muted" style="font-size:.8rem;">버튼을 눌러 CoinGecko 데이터를 불러오세요.</p>
+                </div>
+            </div>
         </div>
     </div>
+
 </main>
-<!-- Bootstrap JS Bundle -->
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-    const API_URL = '/api/portfolio';
-    const SYNC_URL = '/api/sync';
+'use strict';
 
-    function getAuthHeaders() {
-      const token = localStorage.getItem('portfolio_token');
-      if (!token) {
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function getAuthHeaders() {
+    const token = localStorage.getItem('portfolio_token');
+    if (!token) { window.location.href = '/login.html'; return null; }
+    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+}
+function logout() {
+    localStorage.removeItem('portfolio_token');
+    window.location.href = '/login.html';
+}
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+const KRW = v => new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(v);
+const PCT  = (v, digits=2) => v == null ? '—' : `${v >= 0 ? '+' : ''}${(v*100).toFixed(digits)}%`;
+const NUM  = (v, d=4) => v == null ? '—' : v.toLocaleString('ko-KR', {maximumFractionDigits: d});
+
+function pnlClass(v) { return v == null ? '' : v >= 0 ? 'text-up' : 'text-down'; }
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let portfolioData = null;
+let analyticsData = null;
+let allocationChart = null;
+let cumulativeChart = null;
+let currentHistoryDays = 90;
+
+// ── API helpers ───────────────────────────────────────────────────────────────
+async function apiFetch(url) {
+    const headers = getAuthHeaders();
+    if (!headers) throw new Error('Unauthenticated');
+    const res = await fetch(url, { headers });
+    if (res.status === 401) {
+        localStorage.removeItem('portfolio_token');
         window.location.href = '/login.html';
-        return null;
-      }
-      return { 'Authorization': `Bearer ${token}` };
+        throw new Error('Unauthorized');
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────────
+function renderSummaryCards(portfolio, analytics) {
+    // 총 평가금액
+    document.getElementById('card-total-value').textContent = KRW(portfolio.total_value);
+
+    // 총 손익
+    const pl = portfolio.total_profit_loss;
+    const plr = portfolio.total_profit_loss_rate;
+    const plEl = document.getElementById('card-total-pl');
+    plEl.textContent = KRW(pl);
+    plEl.className = `fw-bold fs-4 mt-1 ${pnlClass(pl)}`;
+    document.getElementById('card-total-plr').textContent = PCT(plr);
+    document.getElementById('card-total-plr').className = `fw-semibold ${pnlClass(plr)}`;
+    const plIcon = document.getElementById('card-pl-icon');
+    plIcon.className = `icon-badge ${pl >= 0 ? 'bg-up-soft' : 'bg-down-soft'}`;
+    plIcon.innerHTML = `<i class="bi ${pl >= 0 ? 'bi-graph-up-arrow' : 'bi-graph-down-arrow'} fs-5"></i>`;
+
+    // 오늘의 손익
+    const tdPl = portfolio.today_profit_loss;
+    const tdEl = document.getElementById('card-today-pl');
+    if (tdPl != null) {
+        tdEl.textContent = KRW(tdPl);
+        tdEl.className = `fw-bold fs-4 mt-1 ${pnlClass(tdPl)}`;
+        const todayIcon = document.getElementById('card-today-icon');
+        todayIcon.className = `icon-badge ${tdPl >= 0 ? 'bg-up-soft' : 'bg-down-soft'}`;
+    } else {
+        tdEl.textContent = '첫 동기화 후 표시';
+        tdEl.className = 'fw-bold fs-5 mt-1 text-muted';
     }
 
-    const lastSyncedEl = document.getElementById('last-synced');
-    const totalValueEl = document.getElementById('total-value');
-    const totalProfitLossEl = document.getElementById('total-profit-loss');
-    const tableBody = document.getElementById('assets-table-body');
-    const syncButton = document.getElementById('sync-button');
-    const syncText = document.getElementById('sync-text');
-    const syncSpinner = document.getElementById('sync-spinner');
-    const syncIcon = document.getElementById('sync-icon');
-    const skeletonLoader = document.getElementById('skeleton-loader');
-    const portfolioContent = document.getElementById('portfolio-content');
-    const errorBanner = document.getElementById('error-banner');
-    const allocationChartEl = document.getElementById('allocation-chart');
-    let allocationChart = null;
+    // 투자 원금
+    document.getElementById('card-investment').textContent = KRW(portfolio.total_investment);
+}
 
-    function formatCurrency(value) {
-        return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(value);
+function renderPeriodReturns(pr) {
+    const labels = { '1d': '1일', '1w': '1주', '1m': '1개월', '3m': '3개월', '6m': '6개월', '1y': '1년' };
+    const container = document.getElementById('period-returns-row');
+    container.innerHTML = '';
+    for (const [key, label] of Object.entries(labels)) {
+        const val = pr[key];
+        const cls = val == null ? '' : val >= 0 ? 'up' : 'down';
+        const txt = val == null ? '—' : PCT(val, 2);
+        container.innerHTML += `
+            <div class="d-flex flex-column align-items-center gap-1">
+                <span class="text-muted" style="font-size:.68rem;font-weight:600;">${label}</span>
+                <span class="period-pill ${cls}">${txt}</span>
+            </div>`;
     }
-    
-    function formatPercentage(value) {
-        return `${(value * 100).toFixed(2)}%`;
-    }
+}
 
-    function showLoading() {
-        skeletonLoader.classList.remove('d-none');
-        portfolioContent.classList.add('d-none');
-        errorBanner.classList.add('d-none');
-    }
+function renderRiskMetrics(risk) {
+    const mdd = risk.mdd;
+    document.getElementById('risk-mdd').textContent = mdd != null ? PCT(mdd, 2) : '데이터 부족';
+    document.getElementById('risk-mdd').className = `fw-bold fs-5 mt-1 ${mdd != null ? 'text-down' : 'text-muted'}`;
 
-    function showContent() {
-        skeletonLoader.classList.add('d-none');
-        portfolioContent.classList.remove('d-none');
-        errorBanner.classList.add('d-none');
-    }
+    const vol = risk.volatility;
+    const volEl = document.getElementById('risk-vol');
+    volEl.textContent = vol != null ? PCT(vol, 2) : '데이터 부족';
+    volEl.className = `fw-bold fs-5 mt-1 ${vol != null ? '' : 'text-muted'}`;
 
-    function showError(message) {
-        skeletonLoader.classList.add('d-none');
-        portfolioContent.classList.add('d-none');
-        errorBanner.textContent = message;
-        errorBanner.classList.remove('d-none');
-    }
-
-    function updateAllocationChart(assets) {
-        const labels = assets.map(asset => `${asset.name} (${asset.ticker})`);
-        const values = assets.map(asset => asset.total_value);
-        const colors = [
-            'rgba(54, 123, 255, 0.8)',
-            'rgba(75, 192, 192, 0.8)',
-            'rgba(255, 159, 64, 0.8)',
-            'rgba(255, 99, 132, 0.8)',
-            'rgba(153, 102, 255, 0.8)',
-            'rgba(255, 205, 86, 0.8)',
-        ];
-
-        if (!allocationChart) {
-            allocationChart = new Chart(allocationChartEl, {
-                type: 'doughnut',
-                data: {
-                    labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: values.map((_, index) => colors[index % colors.length]),
-                        borderWidth: 0,
-                    }],
-                },
-                options: {
-                    plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } },
-                        tooltip: {
-                            callbacks: {
-                                label: context => {
-                                    const value = context.parsed;
-                                    const total = values.reduce((sum, current) => sum + current, 0);
-                                    const percent = total ? ((value / total) * 100).toFixed(1) : '0.0';
-                                    return `${context.label}: ${formatCurrency(value)} (${percent}%)`;
-                                },
-                            },
-                        },
-                    },
-                    maintainAspectRatio: false,
-                },
-            });
-        } else {
-            allocationChart.data.labels = labels;
-            allocationChart.data.datasets[0].data = values;
-            allocationChart.data.datasets[0].backgroundColor = values.map((_, index) => colors[index % colors.length]);
-            allocationChart.update();
-        }
+    const sharpe = risk.sharpe;
+    const sharpeEl = document.getElementById('risk-sharpe');
+    if (sharpe != null) {
+        sharpeEl.textContent = sharpe.toFixed(2);
+        sharpeEl.className = `fw-bold fs-5 mt-1 ${sharpe >= 1 ? 'text-up' : sharpe >= 0 ? '' : 'text-down'}`;
+    } else {
+        sharpeEl.textContent = '데이터 부족';
+        sharpeEl.className = 'fw-bold fs-5 mt-1 text-muted';
     }
 
-    function renderPortfolio(data) {
-        const lastSyncedDate = new Date(data.last_synced);
-        lastSyncedEl.textContent = `Last Synced: ${lastSyncedDate.toLocaleString()}`;
+    const hhi = risk.hhi;
+    const hhiEl = document.getElementById('risk-hhi');
+    hhiEl.textContent = hhi != null ? Math.round(hhi).toLocaleString() : '—';
+    const hhiPct = Math.min((hhi / 10000) * 100, 100);
+    const hhiColor = hhi > 2500 ? '#dc2626' : hhi > 1500 ? '#f59e0b' : '#16a34a';
+    const hhiFill = document.getElementById('hhi-fill');
+    hhiFill.style.width = `${hhiPct}%`;
+    hhiFill.style.background = hhiColor;
+    hhiEl.style.color = hhiColor;
+}
 
-        totalValueEl.textContent = formatCurrency(data.total_value);
-        
-        const profitLoss = data.total_profit_loss;
-        const profitLossRate = data.total_profit_loss_rate;
-        
-        const pnlIconContainer = document.getElementById('profit-loss-icon-container');
-        const pnlIcon = document.getElementById('profit-loss-icon');
-        let pnlClass, pnlIconClass, pnlBgClass;
+function renderHoldingsTable(assets) {
+    const total = assets.reduce((s, a) => s + a.total_value, 0) || 1;
+    const tbody = document.getElementById('holdings-tbody');
+    tbody.innerHTML = '';
+    if (!assets.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-5 text-muted">보유 종목 없음</td></tr>';
+        return;
+    }
+    assets.forEach(a => {
+        const pnl = a.profit_loss;
+        const cls = pnlClass(pnl);
+        const weight = (a.total_value / total * 100).toFixed(1);
+        const purchase = a.quantity * a.avg_price;
+        const holdDays = a.first_purchase_date
+            ? Math.floor((Date.now() - new Date(a.first_purchase_date)) / 86400000)
+            : null;
+        const holdText = holdDays != null
+            ? holdDays >= 30 ? `${Math.floor(holdDays/30)}개월` : `${holdDays}일`
+            : '—';
 
-        if (profitLoss >= 0) {
-            pnlClass = 'text-success';
-            pnlIconClass = 'bi-graph-up-arrow';
-            pnlBgClass = 'bg-success';
-        } else {
-            pnlClass = 'text-danger';
-            pnlIconClass = 'bi-graph-down-arrow';
-            pnlBgClass = 'bg-danger';
-        }
-
-        totalProfitLossEl.innerHTML = `
-            ${formatCurrency(profitLoss)} 
-            <span class="fs-6 fw-normal align-middle">(${formatPercentage(profitLossRate)})</span>
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>
+                <div class="fw-semibold">${a.name}</div>
+                <div class="text-muted" style="font-size:.72rem;">${a.ticker}</div>
+            </td>
+            <td class="num">${KRW(a.avg_price)}</td>
+            <td class="num">${KRW(a.current_price)}</td>
+            <td class="num">${NUM(a.quantity)}</td>
+            <td class="num">${KRW(purchase)}</td>
+            <td class="num fw-semibold">${KRW(a.total_value)}</td>
+            <td class="num ${cls}">${KRW(pnl)}</td>
+            <td class="num ${cls} fw-semibold">${PCT(a.profit_loss_rate)}</td>
+            <td class="num">
+                <div class="d-flex align-items-center gap-1 justify-content-end">
+                    <span>${weight}%</span>
+                    <div style="width:40px;height:5px;border-radius:3px;background:#e2e8f0;overflow:hidden;">
+                        <div style="width:${weight}%;height:100%;background:#3b82f6;border-radius:3px;"></div>
+                    </div>
+                </div>
+            </td>
+            <td class="num text-muted" style="font-size:.8rem;">${holdText}</td>
         `;
-        totalProfitLossEl.className = `card-text h2 fw-bold ${pnlClass}`;
-        
-        pnlIcon.className = `bi ${pnlIconClass} fs-4`;
-        pnlIconContainer.className = `${pnlBgClass} bg-opacity-10 text-${pnlClass.replace('text-', '')} rounded-circle d-flex align-items-center justify-content-center`;
+        tbody.appendChild(tr);
+    });
+}
 
+function renderAllocationChart(assets) {
+    const labels = assets.map(a => a.ticker.replace('KRW-', ''));
+    const values = assets.map(a => a.total_value);
+    const COLORS = ['#3b82f6','#14b8a6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f97316','#a78bfa'];
 
-        tableBody.innerHTML = ''; // Clear existing rows
+    if (!allocationChart) {
+        allocationChart = new Chart(document.getElementById('allocation-chart'), {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{ data: values, backgroundColor: COLORS.slice(0, values.length), borderWidth: 2, borderColor: '#fff' }]
+            },
+            options: {
+                cutout: '65%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 11 } } },
+                    tooltip: { callbacks: { label: ctx => {
+                        const total = values.reduce((s,v)=>s+v,0);
+                        return ` ${ctx.label}: ${(ctx.parsed/total*100).toFixed(1)}%`;
+                    }}}
+                },
+                maintainAspectRatio: false,
+            }
+        });
+    } else {
+        allocationChart.data.labels = labels;
+        allocationChart.data.datasets[0].data = values;
+        allocationChart.data.datasets[0].backgroundColor = COLORS.slice(0, values.length);
+        allocationChart.update();
+    }
+}
 
-        if (data.assets.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-5">No assets found.</td></tr>';
-            updateAllocationChart([]);
-            showContent();
+function renderTreemap(assets) {
+    const container = document.getElementById('treemap-container');
+    container.innerHTML = '';
+    const total = assets.reduce((s,a)=>s+a.total_value,0) || 1;
+    const COLORS = ['#3b82f6','#14b8a6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f97316','#a78bfa'];
+    const sorted = [...assets].sort((a,b)=>b.total_value - a.total_value);
+    sorted.forEach((a, i) => {
+        const pct = a.total_value / total * 100;
+        const tile = document.createElement('div');
+        tile.className = 'treemap-tile';
+        tile.style.cssText = `width:calc(${pct}% - 4px);min-width:60px;height:80px;background:${COLORS[i%COLORS.length]};`;
+        const plSign = a.profit_loss >= 0 ? '+' : '';
+        tile.innerHTML = `<div><div>${a.ticker.replace('KRW-','')}</div><div style="font-size:.65rem;opacity:.85;">${pct.toFixed(1)}%</div><div style="font-size:.65rem;opacity:.85;">${plSign}${(a.profit_loss_rate*100).toFixed(1)}%</div></div>`;
+        container.appendChild(tile);
+    });
+}
+
+function renderTop5(top5) {
+    const container = document.getElementById('top5-list');
+    container.innerHTML = '';
+    if (!top5.length) {
+        container.innerHTML = '<p class="text-muted" style="font-size:.8rem;">데이터 없음</p>';
+        return;
+    }
+    const maxPl = Math.max(...top5.map(t => Math.abs(t.profit_loss)), 1);
+    top5.forEach((item, i) => {
+        const cls = pnlClass(item.profit_loss);
+        const barW = Math.abs(item.profit_loss) / maxPl * 100;
+        const barColor = item.profit_loss >= 0 ? '#16a34a' : '#dc2626';
+        container.innerHTML += `
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <span class="text-muted fw-semibold" style="width:18px;font-size:.75rem;">${i+1}</span>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold" style="font-size:.82rem;">${item.ticker.replace('KRW-','')}</span>
+                        <span class="${cls} fw-semibold" style="font-size:.8rem;">${KRW(item.profit_loss)}</span>
+                    </div>
+                    <div style="height:4px;border-radius:2px;background:#e2e8f0;margin-top:4px;overflow:hidden;">
+                        <div style="width:${barW}%;height:100%;background:${barColor};border-radius:2px;"></div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted" style="font-size:.68rem;">비중 ${(item.weight*100).toFixed(1)}%</span>
+                        <span class="${cls}" style="font-size:.68rem;">${PCT(item.profit_loss_rate)}</span>
+                    </div>
+                </div>
+            </div>`;
+    });
+}
+
+// 기간에 따른 가로축 라벨 포맷 및 눈금 설정
+function getAxisConfig(days) {
+    // "YYYY-MM-DD" 문자열을 기간에 맞게 포맷
+    if (days <= 30) {
+        // 1개월: 일 단위 — "4/1", "4/5" ...
+        return {
+            format: d => `${d.getMonth()+1}/${d.getDate()}`,
+            maxTicksLimit: 10,
+        };
+    } else if (days <= 90) {
+        // 3개월: 1주 간격 — "4/1", "4/8" ...
+        return {
+            format: d => `${d.getMonth()+1}/${d.getDate()}`,
+            maxTicksLimit: 12,
+        };
+    } else if (days <= 180) {
+        // 6개월: 2주 간격 — "2월", "3월" ...
+        return {
+            format: d => `${d.getMonth()+1}월 ${d.getDate()}일`,
+            maxTicksLimit: 8,
+        };
+    } else {
+        // 1년: 월 단위 — "1월", "2월" ...
+        return {
+            format: d => `${d.getFullYear()}/${d.getMonth()+1}월`,
+            maxTicksLimit: 12,
+        };
+    }
+}
+
+async function renderCumulativeChart(days) {
+    try {
+        const data = await apiFetch(`/api/analytics/history?days=${days}`);
+        if (!data.timestamps || !data.timestamps.length) {
+            document.getElementById('cumulative-chart').closest('.chart-wrap').innerHTML =
+                '<p class="text-muted text-center py-5" style="font-size:.8rem;">스냅샷 데이터 부족 (동기화 후 이용 가능)</p>';
             return;
         }
 
-        data.assets.forEach(asset => {
-            const row = tableBody.insertRow();
-            const assetPnlClass = asset.profit_loss >= 0 ? 'text-success' : 'text-danger';
-            const pnlIcon = asset.profit_loss >= 0 ? 'bi-arrow-up-short' : 'bi-arrow-down-short';
+        const axisConfig = getAxisConfig(days);
 
-            row.innerHTML = `
-                <td>
-                    <div class="fw-bold">${asset.name}</div>
-                    <small class="text-muted">${asset.ticker}</small>
-                </td>
-                <td class="number-cell">${asset.quantity.toFixed(4)}</td>
-                <td class="number-cell">${formatCurrency(asset.avg_price)}</td>
-                <td class="number-cell">${formatCurrency(asset.current_price)}</td>
-                <td class="number-cell fw-bold">${formatCurrency(asset.total_value)}</td>
-                <td class="number-cell ${assetPnlClass}">
-                    ${formatCurrency(asset.profit_loss)}
-                </td>
-                <td class="number-cell ${assetPnlClass}">
-                    <i class="bi ${pnlIcon}"></i>
-                    ${formatPercentage(asset.profit_loss_rate)}
-                </td>
-            `;
+        // "YYYY-MM-DD" → Date 파싱 (로컬 자정 기준)
+        const labels = data.timestamps.map(t => {
+            const [y, m, d] = t.split('-').map(Number);
+            return axisConfig.format(new Date(y, m - 1, d));
         });
 
-        updateAllocationChart(data.assets);
-        showContent();
-    }
+        const returns = data.cumulative_returns.map(v => +(v * 100).toFixed(3));
+        const values  = data.values;  // 실제 총평가금액 배열
+        const lastVal = returns[returns.length - 1] ?? 0;
+        const isPositive = lastVal >= 0;
+        const lineColor = isPositive ? '#16a34a' : '#dc2626';
+        const bgColor   = isPositive ? 'rgba(22,163,74,.08)' : 'rgba(220,38,38,.08)';
 
-    async function fetchPortfolio() {
-        showLoading();
-        try {
-            const headers = getAuthHeaders();
-            if (!headers) return;
-            const response = await fetch(API_URL, { headers });
-            if (response.status === 401) {
-                localStorage.removeItem('portfolio_token');
-                window.location.href = '/login.html';
-                return;
-            }
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            renderPortfolio(data);
-        } catch (error) {
-            console.error("Could not fetch portfolio:", error);
-            showError('Failed to load portfolio. 백엔드 서버가 실행 중인지 확인하세요.');
+        const tooltipCallbacks = {
+            title: ctx => data.timestamps[ctx[0].dataIndex],
+            label: ctx => {
+                const pct = ctx.parsed.y;
+                const val = values[ctx.dataIndex];
+                return [
+                    ` 수익률  ${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`,
+                    ` 총금액  ${KRW(val)}`,
+                ];
+            },
+        };
+
+        if (!cumulativeChart) {
+            cumulativeChart = new Chart(document.getElementById('cumulative-chart'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: returns,
+                        borderColor: lineColor,
+                        backgroundColor: bgColor,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: tooltipCallbacks },
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                maxTicksLimit: axisConfig.maxTicksLimit,
+                                font: { size: 10 },
+                                maxRotation: 0,
+                            },
+                            grid: { display: false },
+                        },
+                        y: {
+                            ticks: {
+                                callback: v => `${v >= 0 ? '+' : ''}${v}%`,
+                                font: { size: 10 },
+                            },
+                            grid: { color: '#f1f5f9' },
+                        },
+                    },
+                    maintainAspectRatio: false,
+                }
+            });
+        } else {
+            const opts = cumulativeChart.options.scales.x.ticks;
+            opts.maxTicksLimit = axisConfig.maxTicksLimit;
+            cumulativeChart.options.plugins.tooltip.callbacks = tooltipCallbacks;
+            cumulativeChart.data.labels = labels;
+            cumulativeChart.data.datasets[0].data = returns;
+            cumulativeChart.data.datasets[0].borderColor = lineColor;
+            cumulativeChart.data.datasets[0].backgroundColor = bgColor;
+            cumulativeChart.update();
         }
+    } catch (e) {
+        console.error('history chart error:', e);
     }
+}
 
-    async function forceSync() {
-        syncText.textContent = 'Syncing...';
-        syncButton.disabled = true;
-        syncSpinner.classList.remove('d-none');
-        syncIcon.classList.add('d-none');
-
-        try {
-            const headers = getAuthHeaders();
-            if (!headers) return;
-            const response = await fetch(SYNC_URL, { method: 'POST', headers });
-            if (response.status === 401) {
-                localStorage.removeItem('portfolio_token');
-                window.location.href = '/login.html';
-                return;
-            }
-            if (!response.ok) {
-                throw new Error(`Sync failed! status: ${response.status}`);
-            }
-            await fetchPortfolio(); // Refresh data after sync
-        } catch (error) {
-            console.error("Could not force sync:", error);
-            alert("Failed to sync data.");
-        } finally {
-            syncText.textContent = 'Sync Now';
-            syncButton.disabled = false;
-            syncSpinner.classList.add('d-none');
-            syncIcon.classList.remove('d-none');
+async function renderCorrelationMatrix() {
+    const container = document.getElementById('corr-container');
+    container.innerHTML = '<p class="text-muted" style="font-size:.8rem;"><i class="bi bi-arrow-repeat"></i> CoinGecko에서 불러오는 중...</p>';
+    try {
+        const data = await apiFetch('/api/analytics/correlation');
+        if (!data.tickers || !data.tickers.length) {
+            container.innerHTML = '<p class="text-muted" style="font-size:.8rem;">데이터를 불러올 수 없습니다. (CoinGecko API 제한 또는 종목 미지원)</p>';
+            return;
         }
+        const { tickers, matrix } = data;
+        let html = '<div class="table-responsive"><table class="table corr-table table-bordered mb-0"><thead><tr><th></th>';
+        tickers.forEach(t => html += `<th>${t}</th>`);
+        html += '</tr></thead><tbody>';
+        matrix.forEach((row, i) => {
+            html += `<tr><th>${tickers[i]}</th>`;
+            row.forEach(val => {
+                const bg = corrColor(val);
+                html += `<td style="background:${bg};font-size:.7rem;">${val != null ? val.toFixed(2) : '—'}</td>`;
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    } catch (e) {
+        container.innerHTML = '<p class="text-danger" style="font-size:.8rem;">불러오기 실패: ' + e.message + '</p>';
     }
+}
 
-    document.addEventListener('DOMContentLoaded', fetchPortfolio);
-    syncButton.addEventListener('click', forceSync);
+function corrColor(val) {
+    if (val == null) return '#f8fafc';
+    // 1.0 → 짙은 빨강, 0 → 흰색, -1.0 → 짙은 파랑
+    const abs = Math.abs(val);
+    if (val >= 0) return `rgba(220,38,38,${(abs * 0.5).toFixed(2)})`;
+    return `rgba(59,130,246,${(abs * 0.5).toFixed(2)})`;
+}
 
-    function logout() {
-      localStorage.removeItem('portfolio_token');
-      window.location.href = '/login.html';
+async function loadBeta() {
+    try {
+        const data = await apiFetch('/api/analytics/beta');
+        const betaEl = document.getElementById('card-beta');
+        if (data.beta != null) {
+            betaEl.textContent = data.beta.toFixed(2);
+            betaEl.className = 'fw-bold fs-4 mt-1';
+        } else {
+            betaEl.textContent = '데이터 부족';
+            betaEl.className = 'fw-bold fs-4 mt-1 text-muted';
+        }
+    } catch (e) {
+        document.getElementById('card-beta').textContent = '오류';
+        document.getElementById('card-beta').className = 'fw-bold fs-4 mt-1 text-muted';
     }
+}
+
+// ── Main load ─────────────────────────────────────────────────────────────────
+async function loadDashboard() {
+    try {
+        const [portfolio, analytics] = await Promise.all([
+            apiFetch('/api/portfolio'),
+            apiFetch('/api/analytics/summary'),
+        ]);
+        portfolioData = portfolio;
+        analyticsData = analytics;
+
+        // 업비트 API 키 미설정 / 오류 안내
+        if (portfolio.sync_error) {
+            const banner = document.getElementById('error-banner');
+            banner.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>업비트 연동 오류:</strong> ${portfolio.sync_error}<br><small class="text-muted">backend/.env에 UPBIT_ACCESS_KEY / UPBIT_SECRET_KEY를 설정하면 실제 데이터가 표시됩니다.</small>`;
+            banner.classList.remove('d-none');
+        }
+
+        renderSummaryCards(portfolio, analytics);
+        renderPeriodReturns(analytics.period_returns);
+        renderRiskMetrics(analytics.risk_metrics);
+        renderHoldingsTable(portfolio.assets);
+        if (portfolio.assets.length > 0) {
+            renderAllocationChart(portfolio.assets);
+            renderTreemap(portfolio.assets);
+        }
+        renderTop5(analytics.top5_contributors);
+        await renderCumulativeChart(currentHistoryDays);
+
+        // 마지막 업데이트 시각
+        const syncTime = new Date(portfolio.last_synced);
+        document.getElementById('last-synced').textContent =
+            syncTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' 업데이트';
+
+        // Skeleton 숨기기
+        document.getElementById('skeleton-overlay').classList.add('d-none');
+        document.getElementById('main-content').classList.remove('d-none');
+
+        // 베타는 느리므로 비동기 로드
+        loadBeta();
+    } catch (e) {
+        if (e.message === 'Unauthenticated' || e.message === 'Unauthorized') return;
+        document.getElementById('skeleton-overlay').classList.add('d-none');
+        const banner = document.getElementById('error-banner');
+        banner.textContent = '데이터 로딩 실패: ' + e.message + ' — 백엔드 서버가 실행 중인지 확인하세요.';
+        banner.classList.remove('d-none');
+    }
+}
+
+// ── Event listeners ───────────────────────────────────────────────────────────
+document.getElementById('corr-refresh-btn').addEventListener('click', renderCorrelationMatrix);
+document.getElementById('history-period-btns').addEventListener('click', async e => {
+    const btn = e.target.closest('button[data-days]');
+    if (!btn) return;
+    document.querySelectorAll('#history-period-btns button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentHistoryDays = +btn.dataset.days;
+    await renderCumulativeChart(currentHistoryDays);
+});
+
+// ── 자동 갱신 (60초마다) ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    loadDashboard();
+    setInterval(loadDashboard, 60_000);
+});
 </script>
-
 </body>
 </html>

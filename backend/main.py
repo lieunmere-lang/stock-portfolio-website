@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from jose import JWTError
 
 from database import init_db
+from routers.analytics import router as analytics_router
 from routers.auth import router as auth_router, verify_token
 from routers.portfolio import router as portfolio_router
 from scheduler import start_scheduler, stop_scheduler
@@ -39,8 +40,9 @@ def require_auth(request: Request) -> str:
 
 
 # ── 라우터 등록 ───────────────────────────────────────────────────────────
-app.include_router(auth_router)                         # /auth/token (인증 불필요)
-app.include_router(portfolio_router, dependencies=[Depends(require_auth)])  # /api/* (인증 필요)
+app.include_router(auth_router)                                              # /auth/token (인증 불필요)
+app.include_router(portfolio_router, dependencies=[Depends(require_auth)])   # /api/portfolio (인증 필요)
+app.include_router(analytics_router, dependencies=[Depends(require_auth)])   # /api/analytics/* (인증 필요)
 
 
 # ── 수명 주기 ─────────────────────────────────────────────────────────────

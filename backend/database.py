@@ -5,7 +5,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from sqlalchemy import (
     Boolean, Column, DateTime, Float, ForeignKey,
-    Integer, String, Text, create_engine, event,
+    Integer, String, Text, create_engine, event, text,
 )
 from sqlalchemy.orm import DeclarativeBase, Session, relationship
 
@@ -37,6 +37,8 @@ class PortfolioSnapshot(Base):
     total_value = Column(Float, nullable=False)
     total_profit_loss = Column(Float, nullable=False)
     total_profit_loss_rate = Column(Float, nullable=False)
+    total_investment = Column(Float, nullable=True)   # 투자 원금
+    today_profit_loss = Column(Float, nullable=True)  # 오늘의 손익 (24h 대비)
 
     assets = relationship("AssetSnapshot", back_populates="snapshot", cascade="all, delete-orphan")
 
@@ -55,6 +57,7 @@ class AssetSnapshot(Base):
     profit_loss = Column(Float, nullable=False)
     profit_loss_rate = Column(Float, nullable=False)
     asset_type = Column(String(20), nullable=False, default="crypto")
+    first_purchase_date = Column(DateTime, nullable=True)  # 최초 매수일
 
     snapshot = relationship("PortfolioSnapshot", back_populates="assets")
 
@@ -82,8 +85,37 @@ class PriceAlert(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
+class ManualAsset(Base):
+    """업비트 API로 조회되지 않는 수동 등록 자산 (스테이킹 대기, OTC 등)."""
+    __tablename__ = "manual_assets"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), nullable=False)           # 표시 이름 (예: 이더리움 스테이킹)
+    ticker = Column(String(20), nullable=False)          # 표시용 티커 (예: KRW-ETH2)
+    price_ticker = Column(String(20), nullable=False)    # 현재가 조회 티커 (예: KRW-ETH)
+    quantity = Column(Float, nullable=False)
+    avg_price = Column(Float, nullable=False)
+    first_purchase_date = Column(DateTime, nullable=True)
+    asset_type = Column(String(20), nullable=False, default="crypto")
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
+    # 기존 DB에 새 컬럼 추가 (이미 존재하면 무시)
+    migration_stmts = [
+        "ALTER TABLE portfolio_snapshots ADD COLUMN total_investment REAL",
+        "ALTER TABLE portfolio_snapshots ADD COLUMN today_profit_loss REAL",
+        "ALTER TABLE asset_snapshots ADD COLUMN first_purchase_date TEXT",
+    ]
+    with engine.connect() as conn:
+        for stmt in migration_stmts:
+            try:
+                conn.execute(text(stmt))
+                conn.commit()
+            except Exception:
+                pass  # 이미 컬럼이 존재하는 경우 무시
 
 
 def get_db():
