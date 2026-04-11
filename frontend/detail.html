@@ -68,6 +68,9 @@
                 display: flex; flex-direction: column;
                 z-index: 20;
             }
+            /* index.html also lists > #error-banner here; detail.html's
+               error banner is nested inside #main-content, so its margin
+               is already covered by the #main-content selector above. */
             body.has-sidebar > nav.navbar,
             body.has-sidebar > #main-content,
             body.has-sidebar > #loading-overlay { margin-left: 240px; }
