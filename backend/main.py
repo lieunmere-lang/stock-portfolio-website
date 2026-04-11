@@ -9,6 +9,7 @@ from jose import JWTError
 from database import init_db
 from routers.analytics import router as analytics_router
 from routers.auth import router as auth_router, verify_token
+from routers.coin import router as coin_router
 from routers.portfolio import router as portfolio_router
 from scheduler import start_scheduler, stop_scheduler
 
@@ -43,6 +44,7 @@ def require_auth(request: Request) -> str:
 app.include_router(auth_router)                                              # /auth/token (인증 불필요)
 app.include_router(portfolio_router, dependencies=[Depends(require_auth)])   # /api/portfolio (인증 필요)
 app.include_router(analytics_router, dependencies=[Depends(require_auth)])   # /api/analytics/* (인증 필요)
+app.include_router(coin_router,      dependencies=[Depends(require_auth)])   # /api/coin/* (인증 필요)
 
 
 # ── 수명 주기 ─────────────────────────────────────────────────────────────

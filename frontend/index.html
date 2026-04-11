@@ -485,6 +485,10 @@ function renderHoldingsTable(assets) {
             : '—';
 
         const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', () => {
+            window.location.href = `/detail.html?ticker=${encodeURIComponent(a.ticker)}`;
+        });
         tr.innerHTML = `
             <td>
                 <div class="fw-semibold">${a.name}</div>

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>코인 상세</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --color-up: #16a34a;
+            --color-down: #dc2626;
+            --color-neutral: #6b7280;
+            --bg-main: #f1f5f9;
+            --card-radius: 0.875rem;
+        }
+        body { background: var(--bg-main); font-family: 'Inter', sans-serif; color: #1e293b; }
+        .navbar { box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+        .section-card {
+            border: none; border-radius: var(--card-radius);
+            box-shadow: 0 1px 4px rgba(0,0,0,.06);
+        }
+        .section-title {
+            font-size: .8rem; font-weight: 600; letter-spacing: .06em;
+            text-transform: uppercase; color: #64748b; margin-bottom: 1rem;
+        }
+        .text-up   { color: var(--color-up) !important; }
+        .text-down { color: var(--color-down) !important; }
+        .text-neutral { color: var(--color-neutral) !important; }
+        .stat-label {
+            font-size: .72rem; font-weight: 600; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: .05em; margin-bottom: .25rem;
+        }
+        .stat-value { font-size: 1rem; font-weight: 600; }
+        .stat-cell { padding: 1rem; border-radius: .5rem; background: #f8fafc; }
+        .price-big { font-size: 1.75rem; font-weight: 700; }
+        .badge-change {
+            display: inline-flex; align-items: center; gap: .25rem;
+            padding: .25rem .6rem; border-radius: 99px;
+            font-size: .8rem; font-weight: 600;
+        }
+        .badge-up   { background: rgba(22,163,74,.12);  color: var(--color-up); }
+        .badge-down { background: rgba(220,38,38,.12); color: var(--color-down); }
+        .chart-wrap { height: 220px; }
+        .period-btn-group .btn { font-size: .78rem; }
+        .coin-logo { width: 40px; height: 40px; border-radius: 50%; object-fit: contain; }
+        .coin-logo-placeholder {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: #e2e8f0; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: .85rem; color: #64748b;
+        }
+        #loading-overlay {
+            position: fixed; inset: 0; background: var(--bg-main); z-index: 100;
+            display: flex; align-items: center; justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 로딩 오버레이 -->
+<div id="loading-overlay">
+    <div class="text-center text-muted">
+        <div class="spinner-border spinner-border-sm mb-2"></div>
+        <div style="font-size:.85rem;">불러오는 중...</div>
+    </div>
+</div>
+
+<!-- Navbar -->
+<nav class="navbar navbar-light bg-white border-bottom px-3 py-2">
+    <div class="d-flex align-items-center gap-2">
+        <a href="/" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1">
+            <i class="bi bi-arrow-left"></i> 대시보드
+        </a>
+        <span id="nav-title" class="fw-semibold fs-6 ms-1">—</span>
+    </div>
+    <button onclick="logout()" class="btn btn-sm btn-outline-secondary">로그아웃</button>
+</nav>
+
+<div id="main-content" class="container-xl py-4" style="display:none;">
+
+    <!-- 오류 배너 -->
+    <div id="error-banner" class="alert alert-danger d-none mb-3" style="font-size:.85rem;"></div>
+
+    <!-- 코인 헤더 -->
+    <div class="section-card bg-white p-4 mb-3">
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <div id="coin-logo-wrap"></div>
+            <div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <span id="coin-name" class="fw-bold fs-5">—</span>
+                    <span id="coin-symbol" class="text-muted" style="font-size:.85rem;">—</span>
+                </div>
+                <span id="market-cap-rank" class="badge bg-light text-secondary" style="font-size:.72rem;"></span>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <span id="current-price" class="price-big">—</span>
+            <span id="change-24h-badge" class="badge-change">—</span>
+            <span class="text-muted" style="font-size:.78rem;">24시간 변동</span>
+        </div>
+        <!-- 기간별 수익률 뱃지 -->
+        <div class="d-flex gap-2 mt-3 flex-wrap" id="period-changes"></div>
+    </div>
+
+    <div class="row g-3">
+        <!-- 내 보유 현황 -->
+        <div class="col-12 col-lg-5">
+            <div class="section-card bg-white p-4 h-100">
+                <div class="section-title">내 보유 현황</div>
+                <div id="holding-section">
+                    <div class="text-muted text-center py-4" style="font-size:.85rem;">보유 종목 아님</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 시장 데이터 -->
+        <div class="col-12 col-lg-7">
+            <div class="section-card bg-white p-4 h-100">
+                <div class="section-title">시장 데이터</div>
+                <div class="row g-2" id="market-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 가격 차트 -->
+    <div class="section-card bg-white p-4 mt-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="section-title mb-0">가격 차트</div>
+            <div class="btn-group btn-group-sm period-btn-group" id="chart-period-btns">
+                <button class="btn btn-outline-secondary active" data-days="30">1개월</button>
+                <button class="btn btn-outline-secondary" data-days="90">3개월</button>
+                <button class="btn btn-outline-secondary" data-days="180">6개월</button>
+                <button class="btn btn-outline-secondary" data-days="365">1년</button>
+            </div>
+        </div>
+        <div class="chart-wrap">
+            <canvas id="price-chart"></canvas>
+        </div>
+    </div>
+
+    <!-- 링크 -->
+    <div id="links-section" class="section-card bg-white p-4 mt-3 d-none">
+        <div class="section-title">링크</div>
+        <div class="d-flex gap-2 flex-wrap" id="links-wrap"></div>
+    </div>
+
+</div>
+
+<script>
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function getToken() { return localStorage.getItem('token'); }
+function getAuthHeaders() {
+    const t = getToken();
+    if (!t) { window.location.href = '/login.html'; return null; }
+    return { 'Authorization': `Bearer ${t}`, 'Content-Type': 'application/json' };
+}
+function logout() { localStorage.removeItem('token'); window.location.href = '/login.html'; }
+
+async function apiFetch(url) {
+    const headers = getAuthHeaders();
+    if (!headers) throw new Error('Unauthenticated');
+    const res = await fetch(url, { headers });
+    if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+const KRW = v => v == null ? '—' : new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(v);
+const PCT  = (v, d=2) => v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(d)}%`;
+const NUM  = (v, d=2) => v == null ? '—' : v.toLocaleString('ko-KR', { maximumFractionDigits: d });
+const SUPPLY = v => {
+    if (v == null) return '—';
+    if (v >= 1e9) return `${(v/1e9).toFixed(2)}B`;
+    if (v >= 1e6) return `${(v/1e6).toFixed(2)}M`;
+    return NUM(v, 0);
+};
+function pnlClass(v) { return v == null ? '' : v >= 0 ? 'text-up' : 'text-down'; }
+
+// ── State ──────────────────────────────────────────────────────────────────────
+const ticker = new URLSearchParams(location.search).get('ticker') || '';
+let priceChart = null;
+let currentDays = 30;
+
+// ── Render functions ──────────────────────────────────────────────────────────
+function renderHeader(detail) {
+    // 로고
+    const wrap = document.getElementById('coin-logo-wrap');
+    if (detail.image) {
+        wrap.innerHTML = `<img src="${detail.image}" class="coin-logo" alt="${detail.symbol}">`;
+    } else {
+        wrap.innerHTML = `<div class="coin-logo-placeholder">${detail.symbol?.slice(0,3) ?? '?'}</div>`;
+    }
+
+    document.getElementById('coin-name').textContent = detail.name ?? '—';
+    document.getElementById('coin-symbol').textContent = detail.symbol ?? '';
+    document.getElementById('nav-title').textContent = detail.name ?? ticker;
+    document.title = `${detail.name ?? ticker} — My Portfolio`;
+
+    if (detail.market_cap_rank) {
+        document.getElementById('market-cap-rank').textContent = `#${detail.market_cap_rank}`;
+    }
+
+    document.getElementById('current-price').textContent = KRW(detail.current_price_krw);
+
+    const pct24 = detail.price_change_24h_pct;
+    const badge = document.getElementById('change-24h-badge');
+    badge.textContent = PCT(pct24);
+    badge.className = `badge-change ${pct24 != null && pct24 >= 0 ? 'badge-up' : 'badge-down'}`;
+
+    // 기간별 수익률
+    const periods = [
+        { label: '7일', val: detail.price_change_7d_pct },
+        { label: '30일', val: detail.price_change_30d_pct },
+        { label: '1년', val: detail.price_change_1y_pct },
+    ];
+    const periodWrap = document.getElementById('period-changes');
+    periods.forEach(p => {
+        if (p.val == null) return;
+        const isUp = p.val >= 0;
+        const span = document.createElement('span');
+        span.className = `badge-change ${isUp ? 'badge-up' : 'badge-down'}`;
+        span.textContent = `${p.label}  ${PCT(p.val)}`;
+        periodWrap.appendChild(span);
+    });
+}
+
+function renderHolding(asset, totalPortfolio) {
+    if (!asset) return;
+    const el = document.getElementById('holding-section');
+    const weight = totalPortfolio > 0 ? (asset.total_value / totalPortfolio * 100) : 0;
+    const holdDays = asset.first_purchase_date
+        ? Math.floor((Date.now() - new Date(asset.first_purchase_date)) / 86400000)
+        : null;
+    const holdText = holdDays != null
+        ? holdDays >= 30 ? `${Math.floor(holdDays/30)}개월 ${holdDays % 30}일` : `${holdDays}일`
+        : '—';
+
+    const stats = [
+        { label: '평가금액',  value: KRW(asset.total_value),          full: true },
+        { label: '손익',      value: KRW(asset.profit_loss),          cls: pnlClass(asset.profit_loss) },
+        { label: '수익률',    value: PCT(asset.profit_loss_rate),      cls: pnlClass(asset.profit_loss_rate) },
+        { label: '수량',      value: NUM(asset.quantity, 6) },
+        { label: '평균 매수가', value: KRW(asset.avg_price) },
+        { label: '보유기간',  value: holdText },
+        { label: '비중',      value: `${weight.toFixed(1)}%` },
+        { label: '투자금액',  value: KRW(asset.quantity * asset.avg_price) },
+    ];
+
+    el.innerHTML = `<div class="row g-2">` +
+        stats.map(s => `
+            <div class="col-${s.full ? '12' : '6'}">
+                <div class="stat-cell">
+                    <div class="stat-label">${s.label}</div>
+                    <div class="stat-value ${s.cls || ''}">${s.value}</div>
+                </div>
+            </div>`).join('') +
+        `</div>`;
+}
+
+function renderMarketGrid(detail) {
+    const items = [
+        { label: '시가총액',    value: KRW(detail.market_cap_krw) },
+        { label: '24h 거래량',  value: KRW(detail.volume_24h_krw) },
+        { label: '24h 고가',    value: KRW(detail.high_24h_krw) },
+        { label: '24h 저가',    value: KRW(detail.low_24h_krw) },
+        { label: '52주 고가',   value: detail.high_52w_krw ? KRW(detail.high_52w_krw) : KRW(detail.ath_krw) + ' (ATH)' },
+        { label: '52주 저가',   value: detail.low_52w_krw  ? KRW(detail.low_52w_krw)  : '—' },
+        { label: '유통 공급량', value: SUPPLY(detail.circulating_supply) },
+        { label: '전체 공급량', value: detail.total_supply ? SUPPLY(detail.total_supply) : '무제한' },
+        { label: '도미넌스',    value: detail.dominance_pct != null ? `${detail.dominance_pct.toFixed(2)}%` : '—' },
+        { label: '최고가(ATH)', value: KRW(detail.ath_krw) },
+    ];
+
+    document.getElementById('market-grid').innerHTML =
+        items.map(i => `
+            <div class="col-6 col-md-4 col-lg-6 col-xl-4">
+                <div class="stat-cell">
+                    <div class="stat-label">${i.label}</div>
+                    <div class="stat-value">${i.value}</div>
+                </div>
+            </div>`).join('');
+}
+
+function renderLinks(detail) {
+    const links = [];
+    if (detail.homepage) {
+        links.push({ href: detail.homepage, icon: 'bi-globe', label: '공식 사이트' });
+    }
+    if (detail.whitepaper) {
+        links.push({ href: detail.whitepaper, icon: 'bi-file-earmark-text', label: '백서' });
+    }
+    if (!links.length) return;
+
+    document.getElementById('links-section').classList.remove('d-none');
+    document.getElementById('links-wrap').innerHTML = links.map(l =>
+        `<a href="${l.href}" target="_blank" rel="noopener"
+            class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1">
+            <i class="bi ${l.icon}"></i> ${l.label}
+         </a>`
+    ).join('');
+}
+
+async function renderPriceChart(days) {
+    try {
+        const data = await apiFetch(`/api/coin/${encodeURIComponent(ticker)}/price-history?days=${days}`);
+        if (!data.timestamps?.length) return;
+
+        const axisFormat = days <= 30
+            ? d => `${d.getMonth()+1}/${d.getDate()}`
+            : days <= 90
+                ? d => `${d.getMonth()+1}/${d.getDate()}`
+                : d => `${d.getFullYear()}/${d.getMonth()+1}`;
+
+        const labels = data.timestamps.map(t => {
+            const [y, m, d] = t.split('-').map(Number);
+            return axisFormat(new Date(y, m-1, d));
+        });
+
+        const firstPrice = data.prices[0] || 1;
+        const lastPrice  = data.prices[data.prices.length - 1] ?? firstPrice;
+        const isUp = lastPrice >= firstPrice;
+        const lineColor = isUp ? '#16a34a' : '#dc2626';
+        const bgColor   = isUp ? 'rgba(22,163,74,.08)' : 'rgba(220,38,38,.08)';
+
+        if (!priceChart) {
+            priceChart = new Chart(document.getElementById('price-chart'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: data.prices,
+                        borderColor: lineColor,
+                        backgroundColor: bgColor,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: ctx => data.timestamps[ctx[0].dataIndex],
+                                label: ctx => ` ${KRW(ctx.parsed.y)}`,
+                            }
+                        },
+                    },
+                    scales: {
+                        x: {
+                            ticks: { maxTicksLimit: days <= 90 ? 10 : 8, font: { size: 10 }, maxRotation: 0 },
+                            grid: { display: false },
+                        },
+                        y: {
+                            ticks: {
+                                callback: v => {
+                                    if (v >= 1e8) return `${(v/1e8).toFixed(0)}억`;
+                                    if (v >= 1e4) return `${(v/1e4).toFixed(0)}만`;
+                                    return v.toLocaleString();
+                                },
+                                font: { size: 10 },
+                            },
+                            grid: { color: '#f1f5f9' },
+                        },
+                    },
+                    maintainAspectRatio: false,
+                }
+            });
+        } else {
+            const maxTicks = days <= 90 ? 10 : 8;
+            priceChart.options.scales.x.ticks.maxTicksLimit = maxTicks;
+            priceChart.data.labels = labels;
+            priceChart.data.datasets[0].data = data.prices;
+            priceChart.data.datasets[0].borderColor = lineColor;
+            priceChart.data.datasets[0].backgroundColor = bgColor;
+            priceChart.update();
+        }
+    } catch(e) {
+        console.error('price chart error:', e);
+    }
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+async function loadDetail() {
+    if (!ticker) {
+        window.location.href = '/';
+        return;
+    }
+    try {
+        const [detail, portfolio] = await Promise.all([
+            apiFetch(`/api/coin/${encodeURIComponent(ticker)}`),
+            apiFetch('/api/portfolio'),
+        ]);
+
+        renderHeader(detail);
+        renderMarketGrid(detail);
+        renderLinks(detail);
+
+        // 내 보유 현황
+        const myAsset = (portfolio.assets || []).find(a => a.ticker === ticker);
+        renderHolding(myAsset, portfolio.total_value);
+
+        await renderPriceChart(currentDays);
+
+        document.getElementById('loading-overlay').style.display = 'none';
+        document.getElementById('main-content').style.display = '';
+    } catch(e) {
+        if (e.message === 'Unauthenticated' || e.message === 'Unauthorized') return;
+        document.getElementById('loading-overlay').style.display = 'none';
+        document.getElementById('main-content').style.display = '';
+        const banner = document.getElementById('error-banner');
+        banner.textContent = '데이터 로딩 실패: ' + e.message;
+        banner.classList.remove('d-none');
+    }
+}
+
+// 차트 기간 버튼
+document.getElementById('chart-period-btns').addEventListener('click', async e => {
+    const btn = e.target.closest('button[data-days]');
+    if (!btn) return;
+    document.querySelectorAll('#chart-period-btns button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentDays = +btn.dataset.days;
+    await renderPriceChart(currentDays);
+});
+
+document.addEventListener('DOMContentLoaded', loadDetail);
+</script>
+</body>
+</html>

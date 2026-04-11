@@ -55,6 +55,8 @@ UPBIT_TO_COINGECKO: Dict[str, str] = {
     "KRW-TIA": "celestia",
     "KRW-STX": "blockstack",
     "KRW-FLOW": "flow",
+    "KRW-ONDO": "ondo-finance",
+    "KRW-ETH2": "ethereum",   # 이더리움 스테이킹 → ETH 가격 사용
 }
 
 COINGECKO_BASE = "https://api.coingecko.com/api/v3"
