@@ -288,15 +288,24 @@ function status_tunnel() {
     fi
     local tunnel_info
     tunnel_info=$(curl --silent http://127.0.0.1:4040/api/tunnels || true)
-    python3 - <<'PY'
-import json,sys
+    if [[ -z "$tunnel_info" ]]; then
+        echo "tunnel-status: ngrok local API (127.0.0.1:4040) returned no data." >&2
+        return 1
+    fi
+    printf '%s' "$tunnel_info" | python3 -c '
+import json, sys
 try:
-    data=json.loads(sys.stdin.read())
-    for tunnel in data.get('tunnels', []):
-        print(tunnel.get('public_url'))
-except Exception:
-    pass
-PY
+    data = json.loads(sys.stdin.read())
+except Exception as e:
+    print(f"tunnel-status: failed to parse ngrok API response: {e}", file=sys.stderr)
+    sys.exit(1)
+urls = [t.get("public_url") for t in data.get("tunnels", []) if t.get("public_url")]
+if not urls:
+    print("tunnel-status: ngrok reports no active tunnels.", file=sys.stderr)
+    sys.exit(1)
+for url in urls:
+    print(url)
+'
 }
 
 function tail_logs() {
