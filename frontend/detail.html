@@ -97,7 +97,7 @@
         .sidebar-link .badge { margin-left: auto; }
     </style>
 </head>
-<body>
+<body class="has-sidebar">
 
 <!-- 로딩 오버레이 -->
 <div id="loading-overlay">
@@ -107,15 +107,53 @@
     </div>
 </div>
 
-<!-- Navbar -->
-<nav class="navbar navbar-light bg-white border-bottom px-3 py-2">
-    <div class="d-flex align-items-center gap-2">
-        <a href="/" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1">
-            <i class="bi bi-arrow-left"></i> 대시보드
-        </a>
-        <span id="nav-title" class="fw-semibold fs-6 ms-1">—</span>
+<!-- Sidebar navigation -->
+<aside id="sidebar" class="offcanvas-lg offcanvas-start" tabindex="-1" aria-labelledby="sidebar-label">
+    <div class="offcanvas-header border-bottom">
+        <span id="sidebar-label" class="fw-bold">
+            <i class="bi bi-bar-chart-line-fill text-primary"></i> My Portfolio
+        </span>
+        <button type="button" class="btn-close d-lg-none"
+                data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close"></button>
     </div>
-    <button onclick="logout()" class="btn btn-sm btn-outline-secondary">로그아웃</button>
+    <nav class="offcanvas-body d-flex flex-column p-0">
+        <div class="sidebar-group-label">대시보드</div>
+        <a href="/#summary"    class="sidebar-link" data-nav="summary">개요</a>
+        <a href="/#holdings"   class="sidebar-link" data-nav="holdings">보유현황</a>
+        <a href="/#returns"    class="sidebar-link" data-nav="returns">수익률 분석</a>
+        <a href="/#allocation" class="sidebar-link" data-nav="allocation">자산배분</a>
+        <a href="/#risk"       class="sidebar-link" data-nav="risk">리스크 지표</a>
+
+        <div class="sidebar-group-label">분석</div>
+        <span class="sidebar-link disabled">뉴스 리포트 <span class="badge text-bg-light">준비중</span></span>
+        <span class="sidebar-link disabled">시장 상황판 <span class="badge text-bg-light">준비중</span></span>
+
+        <div class="sidebar-group-label">도구</div>
+        <span class="sidebar-link disabled">가격 알림 <span class="badge text-bg-light">준비중</span></span>
+        <span class="sidebar-link disabled">리밸런싱 <span class="badge text-bg-light">준비중</span></span>
+        <span class="sidebar-link disabled">트레이드 저널 <span class="badge text-bg-light">준비중</span></span>
+        <span class="sidebar-link disabled">수익 실현 계산기 <span class="badge text-bg-light">준비중</span></span>
+
+        <div class="sidebar-group-label">기타</div>
+        <span class="sidebar-link disabled">설정 <span class="badge text-bg-light">준비중</span></span>
+
+        <div class="sidebar-footer">
+            <button onclick="logout()" class="btn btn-sm btn-outline-secondary w-100">
+                <i class="bi bi-box-arrow-right"></i> 로그아웃
+            </button>
+        </div>
+    </nav>
+</aside>
+
+<!-- Mobile navbar (only visible <992px) -->
+<nav class="navbar navbar-light bg-white border-bottom px-3 py-2 d-lg-none">
+    <button class="btn btn-sm" type="button"
+            data-bs-toggle="offcanvas" data-bs-target="#sidebar"
+            aria-controls="sidebar" aria-label="메뉴 열기">
+        <i class="bi bi-list fs-4"></i>
+    </button>
+    <span id="nav-title" class="fw-semibold fs-6">—</span>
+    <span style="width:32px"></span>
 </nav>
 
 <div id="main-content" class="container-xl py-4" style="display:none;">
