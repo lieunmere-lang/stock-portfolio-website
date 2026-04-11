@@ -509,6 +509,20 @@ document.getElementById('chart-period-btns').addEventListener('click', async e =
 });
 
 document.addEventListener('DOMContentLoaded', loadDetail);
+
+// ── Sidebar offcanvas auto-close (detail page, no scroll-spy) ─────────────────
+(function initSidebarDetail() {
+    const sidebarEl = document.getElementById('sidebar');
+    document.querySelectorAll('#sidebar .sidebar-link:not(.disabled)').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 992 && sidebarEl) {
+                const inst = bootstrap.Offcanvas.getInstance(sidebarEl)
+                           || bootstrap.Offcanvas.getOrCreateInstance(sidebarEl);
+                inst.hide();
+            }
+        });
+    });
+})();
 </script>
 </body>
 </html>
