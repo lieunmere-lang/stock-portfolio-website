@@ -917,6 +917,43 @@ document.addEventListener('DOMContentLoaded', () => {
     loadDashboard();
     setInterval(loadDashboard, 60_000);
 });
+
+// ── Sidebar scroll-spy + offcanvas auto-close ─────────────────────────────────
+(function initSidebar() {
+    const sectionIds = ['summary', 'returns', 'risk', 'holdings', 'allocation'];
+    const visible = new Set();
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (e.isIntersecting) visible.add(e.target.id);
+            else visible.delete(e.target.id);
+        });
+        // 문서 순서상 마지막으로 교차 중인 섹션을 활성으로 선택
+        // (리스크 지표가 수익률 분석 카드 안에 중첩되어 있어 이 처리가 필요하다)
+        const active = sectionIds.filter(id => visible.has(id)).pop();
+        if (!active) return;
+        document.querySelectorAll('#sidebar .sidebar-link').forEach(el => el.classList.remove('active'));
+        const link = document.querySelector(`#sidebar .sidebar-link[data-nav="${active}"]`);
+        if (link) link.classList.add('active');
+    }, { rootMargin: '-20% 0px -70% 0px' });
+
+    sectionIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) observer.observe(el);
+    });
+
+    // 모바일에서 메뉴 탭 시 offcanvas 자동 닫힘
+    const sidebarEl = document.getElementById('sidebar');
+    document.querySelectorAll('#sidebar .sidebar-link:not(.disabled)').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 992 && sidebarEl) {
+                const inst = bootstrap.Offcanvas.getInstance(sidebarEl)
+                           || bootstrap.Offcanvas.getOrCreateInstance(sidebarEl);
+                inst.hide();
+            }
+        });
+    });
+})();
 </script>
 </body>
 </html>
