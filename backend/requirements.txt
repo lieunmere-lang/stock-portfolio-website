@@ -4,3 +4,5 @@ requests
 apscheduler
 python-dotenv
 pyjwt
+sqlalchemy
+python-jose[cryptography]
