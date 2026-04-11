@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Portfolio</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        :root {
+            --bs-success-rgb: 76, 175, 80;
+            --bs-danger-rgb: 244, 67, 54;
+        }
+        body { 
+            background-color: #f4f7f6; 
+            font-family: 'Inter', sans-serif;
+        }
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,.05);
+        }
+        .card {
+            border: none;
+            border-radius: .75rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,.04);
+            transition: all .2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,.08);
+        }
+        .table {
+            --bs-table-striped-bg: #fcfcfc;
+        }
+        .table-hover > tbody > tr:hover > * {
+            --bs-table-accent-bg: #f5f5f5;
+        }
+        .table thead th {
+            border-bottom-width: 1px;
+        }
+        .table td, .table th {
+            vertical-align: middle;
+            border-color: #f0f0f0;
+        }
+        .chart-container {
+            min-height: 240px;
+        }
+        .number-cell { text-align: right; }
+        .text-success { color: rgb(var(--bs-success-rgb)) !important; }
+        .text-danger { color: rgb(var(--bs-danger-rgb)) !important; }
+    </style>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+    <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center" href="#">
+            <i class="bi bi-bar-chart-line-fill fs-3 me-2"></i>
+            <span class="fw-bold fs-4">My Portfolio</span>
+        </a>
+        <div class="d-flex align-items-center">
+            <small id="last-synced" class="text-muted me-3"></small>
+            <button id="sync-button" class="btn btn-primary d-flex align-items-center">
+                <span id="sync-spinner" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
+                <i id="sync-icon" class="bi bi-arrow-repeat me-1"></i>
+                <span id="sync-text">Sync Now</span>
+            </button>
+        </div>
+    </div>
+</nav>
+
+<main class="container py-5">
+
+    <!-- Skeleton Loader -->
+    <div id="skeleton-loader">
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="card h-100 p-4 placeholder-glow">
+                    <span class="placeholder col-6"></span>
+                    <span class="placeholder col-8 mt-2"></span>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card h-100 p-4 placeholder-glow">
+                    <span class="placeholder col-6"></span>
+                    <span class="placeholder col-8 mt-2"></span>
+                </div>
+            </div>
+        </div>
+        <div class="card placeholder-glow">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 25%;"><span class="placeholder col-4"></span></th>
+                            <th><span class="placeholder col-3"></span></th>
+                            <th><span class="placeholder col-3"></span></th>
+                            <th><span class="placeholder col-3"></span></th>
+                            <th><span class="placeholder col-3"></span></th>
+                            <th><span class="placeholder col-3"></span></th>
+                            <th><span class="placeholder col-3"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Skeleton Rows -->
+                        <script>
+                            for (let i = 0; i < 5; i++) {
+                                document.write(`
+                                    <tr>
+                                        <td><span class="placeholder col-7"></span><br><span class="placeholder col-4"></span></td>
+                                        <td><span class="placeholder col-10"></span></td>
+                                        <td><span class="placeholder col-10"></span></td>
+                                        <td><span class="placeholder col-10"></span></td>
+                                        <td><span class="placeholder col-10"></span></td>
+                                        <td><span class="placeholder col-10"></span></td>
+                                        <td><span class="placeholder col-10"></span></td>
+                                    </tr>
+                                `);
+                            }
+                        </script>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="error-banner" class="alert alert-danger d-none mx-auto" role="alert" style="max-width: 960px;"></div>
+
+    <!-- Main Content -->
+    <div id="portfolio-content" class="d-none">
+        <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100 p-4">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                        <i class="bi bi-wallet2 fs-4"></i>
+                    </div>
+                    <div class="ms-3">
+                        <h5 class="card-title text-muted fw-normal mb-1">Total Value</h5>
+                        <p id="total-value" class="card-text h2 fw-bold"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100 p-4">
+                <div class="d-flex align-items-center">
+                    <div id="profit-loss-icon-container" class="rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                        <i id="profit-loss-icon" class="bi fs-4"></i>
+                    </div>
+                    <div class="ms-3">
+                        <h5 class="card-title text-muted fw-normal mb-1">Total Profit/Loss</h5>
+                        <p id="total-profit-loss" class="card-text h2 fw-bold"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card h-100 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="card-title mb-1">Asset Allocation</h5>
+                        <small class="text-muted">현재 자산 비중</small>
+                    </div>
+                    <span class="badge bg-secondary bg-opacity-15 text-secondary">현재가 기준</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="allocation-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="h5 mb-0">Assets</h2>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 25%;">Name</th>
+                        <th class="number-cell">Quantity</th>
+                        <th class="number-cell">Avg. Price</th>
+                        <th class="number-cell">Current Price</th>
+                        <th class="number-cell">Total Value</th>
+                        <th class="number-cell">Profit/Loss</th>
+                        <th class="number-cell">P/L Rate</th>
+                    </tr>
+                </thead>
+                <tbody id="assets-table-body">
+                    <!-- Asset rows will be injected here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+<!-- Bootstrap JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    const API_URL = '/api/portfolio';
+    const SYNC_URL = '/api/sync';
+    const API_AUTH_HEADER = '__BASIC_AUTH_HEADER__';
+
+    const lastSyncedEl = document.getElementById('last-synced');
+    const totalValueEl = document.getElementById('total-value');
+    const totalProfitLossEl = document.getElementById('total-profit-loss');
+    const tableBody = document.getElementById('assets-table-body');
+    const syncButton = document.getElementById('sync-button');
+    const syncText = document.getElementById('sync-text');
+    const syncSpinner = document.getElementById('sync-spinner');
+    const syncIcon = document.getElementById('sync-icon');
+    const skeletonLoader = document.getElementById('skeleton-loader');
+    const portfolioContent = document.getElementById('portfolio-content');
+    const errorBanner = document.getElementById('error-banner');
+    const allocationChartEl = document.getElementById('allocation-chart');
+    let allocationChart = null;
+
+    function formatCurrency(value) {
+        return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(value);
+    }
+    
+    function formatPercentage(value) {
+        return `${(value * 100).toFixed(2)}%`;
+    }
+
+    function showLoading() {
+        skeletonLoader.classList.remove('d-none');
+        portfolioContent.classList.add('d-none');
+        errorBanner.classList.add('d-none');
+    }
+
+    function showContent() {
+        skeletonLoader.classList.add('d-none');
+        portfolioContent.classList.remove('d-none');
+        errorBanner.classList.add('d-none');
+    }
+
+    function showError(message) {
+        skeletonLoader.classList.add('d-none');
+        portfolioContent.classList.add('d-none');
+        errorBanner.textContent = message;
+        errorBanner.classList.remove('d-none');
+    }
+
+    function updateAllocationChart(assets) {
+        const labels = assets.map(asset => `${asset.name} (${asset.ticker})`);
+        const values = assets.map(asset => asset.total_value);
+        const colors = [
+            'rgba(54, 123, 255, 0.8)',
+            'rgba(75, 192, 192, 0.8)',
+            'rgba(255, 159, 64, 0.8)',
+            'rgba(255, 99, 132, 0.8)',
+            'rgba(153, 102, 255, 0.8)',
+            'rgba(255, 205, 86, 0.8)',
+        ];
+
+        if (!allocationChart) {
+            allocationChart = new Chart(allocationChartEl, {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: values.map((_, index) => colors[index % colors.length]),
+                        borderWidth: 0,
+                    }],
+                },
+                options: {
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } },
+                        tooltip: {
+                            callbacks: {
+                                label: context => {
+                                    const value = context.parsed;
+                                    const total = values.reduce((sum, current) => sum + current, 0);
+                                    const percent = total ? ((value / total) * 100).toFixed(1) : '0.0';
+                                    return `${context.label}: ${formatCurrency(value)} (${percent}%)`;
+                                },
+                            },
+                        },
+                    },
+                    maintainAspectRatio: false,
+                },
+            });
+        } else {
+            allocationChart.data.labels = labels;
+            allocationChart.data.datasets[0].data = values;
+            allocationChart.data.datasets[0].backgroundColor = values.map((_, index) => colors[index % colors.length]);
+            allocationChart.update();
+        }
+    }
+
+    function renderPortfolio(data) {
+        const lastSyncedDate = new Date(data.last_synced);
+        lastSyncedEl.textContent = `Last Synced: ${lastSyncedDate.toLocaleString()}`;
+
+        totalValueEl.textContent = formatCurrency(data.total_value);
+        
+        const profitLoss = data.total_profit_loss;
+        const profitLossRate = data.total_profit_loss_rate;
+        
+        const pnlIconContainer = document.getElementById('profit-loss-icon-container');
+        const pnlIcon = document.getElementById('profit-loss-icon');
+        let pnlClass, pnlIconClass, pnlBgClass;
+
+        if (profitLoss >= 0) {
+            pnlClass = 'text-success';
+            pnlIconClass = 'bi-graph-up-arrow';
+            pnlBgClass = 'bg-success';
+        } else {
+            pnlClass = 'text-danger';
+            pnlIconClass = 'bi-graph-down-arrow';
+            pnlBgClass = 'bg-danger';
+        }
+
+        totalProfitLossEl.innerHTML = `
+            ${formatCurrency(profitLoss)} 
+            <span class="fs-6 fw-normal align-middle">(${formatPercentage(profitLossRate)})</span>
+        `;
+        totalProfitLossEl.className = `card-text h2 fw-bold ${pnlClass}`;
+        
+        pnlIcon.className = `bi ${pnlIconClass} fs-4`;
+        pnlIconContainer.className = `${pnlBgClass} bg-opacity-10 text-${pnlClass.replace('text-', '')} rounded-circle d-flex align-items-center justify-content-center`;
+
+
+        tableBody.innerHTML = ''; // Clear existing rows
+
+        if (data.assets.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-5">No assets found.</td></tr>';
+            updateAllocationChart([]);
+            showContent();
+            return;
+        }
+
+        data.assets.forEach(asset => {
+            const row = tableBody.insertRow();
+            const assetPnlClass = asset.profit_loss >= 0 ? 'text-success' : 'text-danger';
+            const pnlIcon = asset.profit_loss >= 0 ? 'bi-arrow-up-short' : 'bi-arrow-down-short';
+
+            row.innerHTML = `
+                <td>
+                    <div class="fw-bold">${asset.name}</div>
+                    <small class="text-muted">${asset.ticker}</small>
+                </td>
+                <td class="number-cell">${asset.quantity.toFixed(4)}</td>
+                <td class="number-cell">${formatCurrency(asset.avg_price)}</td>
+                <td class="number-cell">${formatCurrency(asset.current_price)}</td>
+                <td class="number-cell fw-bold">${formatCurrency(asset.total_value)}</td>
+                <td class="number-cell ${assetPnlClass}">
+                    ${formatCurrency(asset.profit_loss)}
+                </td>
+                <td class="number-cell ${assetPnlClass}">
+                    <i class="bi ${pnlIcon}"></i>
+                    ${formatPercentage(asset.profit_loss_rate)}
+                </td>
+            `;
+        });
+
+        updateAllocationChart(data.assets);
+        showContent();
+    }
+
+    async function fetchPortfolio() {
+        showLoading();
+        try {
+            const response = await fetch(API_URL, {
+                credentials: 'same-origin',
+                headers: API_AUTH_HEADER && API_AUTH_HEADER !== '__BASIC_AUTH_HEADER__'
+                    ? { Authorization: API_AUTH_HEADER }
+                    : {},
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            renderPortfolio(data);
+        } catch (error) {
+            console.error("Could not fetch portfolio:", error);
+            showError('Failed to load portfolio. 백엔드 서버가 실행 중인지 확인하세요.');
+        }
+    }
+
+    async function forceSync() {
+        syncText.textContent = 'Syncing...';
+        syncButton.disabled = true;
+        syncSpinner.classList.remove('d-none');
+        syncIcon.classList.add('d-none');
+
+        try {
+            const response = await fetch(SYNC_URL, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: API_AUTH_HEADER && API_AUTH_HEADER !== '__BASIC_AUTH_HEADER__'
+                    ? { Authorization: API_AUTH_HEADER }
+                    : {},
+            });
+            if (!response.ok) {
+                throw new Error(`Sync failed! status: ${response.status}`);
+            }
+            await fetchPortfolio(); // Refresh data after sync
+        } catch (error) {
+            console.error("Could not force sync:", error);
+            alert("Failed to sync data.");
+        } finally {
+            syncText.textContent = 'Sync Now';
+            syncButton.disabled = false;
+            syncSpinner.classList.add('d-none');
+            syncIcon.classList.remove('d-none');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', fetchPortfolio);
+    syncButton.addEventListener('click', forceSync);
+</script>
+
+</body>
+</html>
