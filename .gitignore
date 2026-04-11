@@ -1,54 +1,30 @@
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
-*.pyd
-.Python
-env/
 venv/
-pip-selfcheck.json
+.venv/
+*.egg-info/
 
-# Node
-node_modules/
-.npm
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-package-lock.json
-yarn.lock
-
-# IDE/Editor
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Environment variables
+# Environment & Secrets
 .env
 *.env
 
-# Logs
-*.log
-
 # Server runtime
 *.pid
+*.log
+server.log
+frontend.log
+ngrok.log
 
-# SQLite database
+# SQLite
 *.db
 *.db-shm
 *.db-wal
 
-# Large binaries (ngrok 등)
-ngrok
-ngrok.exe
+# macOS
+.DS_Store
 
-# Git worktrees
-.worktrees/
-
-# Claude Code AI memory (로컬 전용)
-.claude/
+# IDE
+.vscode/
+.idea/
