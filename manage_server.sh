@@ -18,7 +18,7 @@ FRONTEND_PORT="8001"
 FRONTEND_URL="http://127.0.0.1:$FRONTEND_PORT"
 FRONTEND_PID_FILE="$SCRIPT_DIR/frontend.pid"
 FRONTEND_LOG_FILE="$SCRIPT_DIR/frontend.log"
-TUNNEL_PORT="$FRONTEND_PORT"
+TUNNEL_PORT="$PORT"
 NGROK_BIN="$SCRIPT_DIR/ngrok"
 NGROK_PID_FILE="$SCRIPT_DIR/ngrok.pid"
 NGROK_LOG_FILE="$SCRIPT_DIR/ngrok.log"
@@ -186,7 +186,6 @@ function status_frontend() {
 
 function start_all() {
     start_server
-    start_frontend_server
     if ! start_tunnel; then
         echo "Warning: ngrok tunnel was not started. Install ngrok or run './manage_server.sh tunnel-start' manually."
     fi
@@ -194,13 +193,11 @@ function start_all() {
 
 function stop_all() {
     stop_tunnel
-    stop_frontend_server
     stop_server
 }
 
 function status_all() {
     status_server
-    status_frontend
     status_tunnel
 }
 
