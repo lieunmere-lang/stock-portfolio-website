@@ -70,6 +70,7 @@
                 <i id="sync-icon" class="bi bi-arrow-repeat me-1"></i>
                 <span id="sync-text">Sync Now</span>
             </button>
+            <button onclick="logout()" class="btn btn-outline-secondary btn-sm ms-2">로그아웃</button>
         </div>
     </div>
 </nav>
@@ -209,7 +210,15 @@
 <script>
     const API_URL = '/api/portfolio';
     const SYNC_URL = '/api/sync';
-    const API_AUTH_HEADER = '__BASIC_AUTH_HEADER__';
+
+    function getAuthHeaders() {
+      const token = localStorage.getItem('portfolio_token');
+      if (!token) {
+        window.location.href = '/login.html';
+        return null;
+      }
+      return { 'Authorization': `Bearer ${token}` };
+    }
 
     const lastSyncedEl = document.getElementById('last-synced');
     const totalValueEl = document.getElementById('total-value');
@@ -373,12 +382,14 @@
     async function fetchPortfolio() {
         showLoading();
         try {
-            const response = await fetch(API_URL, {
-                credentials: 'same-origin',
-                headers: API_AUTH_HEADER && API_AUTH_HEADER !== '__BASIC_AUTH_HEADER__'
-                    ? { Authorization: API_AUTH_HEADER }
-                    : {},
-            });
+            const headers = getAuthHeaders();
+            if (!headers) return;
+            const response = await fetch(API_URL, { headers });
+            if (response.status === 401) {
+                localStorage.removeItem('portfolio_token');
+                window.location.href = '/login.html';
+                return;
+            }
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -397,13 +408,14 @@
         syncIcon.classList.add('d-none');
 
         try {
-            const response = await fetch(SYNC_URL, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: API_AUTH_HEADER && API_AUTH_HEADER !== '__BASIC_AUTH_HEADER__'
-                    ? { Authorization: API_AUTH_HEADER }
-                    : {},
-            });
+            const headers = getAuthHeaders();
+            if (!headers) return;
+            const response = await fetch(SYNC_URL, { method: 'POST', headers });
+            if (response.status === 401) {
+                localStorage.removeItem('portfolio_token');
+                window.location.href = '/login.html';
+                return;
+            }
             if (!response.ok) {
                 throw new Error(`Sync failed! status: ${response.status}`);
             }
@@ -421,6 +433,11 @@
 
     document.addEventListener('DOMContentLoaded', fetchPortfolio);
     syncButton.addEventListener('click', forceSync);
+
+    function logout() {
+      localStorage.removeItem('portfolio_token');
+      window.location.href = '/login.html';
+    }
 </script>
 
 </body>
