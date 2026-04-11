@@ -140,7 +140,7 @@
 <main class="container-xl py-4 px-3">
 
     <!-- ① 요약 카드 5개 -->
-    <div class="row g-3 mb-4">
+    <div id="summary" class="row g-3 mb-4">
         <!-- 총 평가금액 -->
         <div class="col-6 col-md-4 col-xl">
             <div class="summary-card p-4 h-100 bg-white">
@@ -210,37 +210,40 @@
         <!-- 기간별 수익률 + 리스크 지표 -->
         <div class="col-12 col-lg-5">
             <div class="section-card bg-white p-4 h-100">
-                <div class="section-title">수익률 분석</div>
-                <!-- 기간별 수익률 -->
-                <div class="d-flex flex-wrap gap-2 mb-4" id="period-returns-row">
-                    <span class="text-muted" style="font-size:.8rem;">데이터 로딩 중...</span>
+                <div id="returns">
+                    <div class="section-title">수익률 분석</div>
+                    <!-- 기간별 수익률 -->
+                    <div class="d-flex flex-wrap gap-2 mb-4" id="period-returns-row">
+                        <span class="text-muted" style="font-size:.8rem;">데이터 로딩 중...</span>
+                    </div>
                 </div>
-                <!-- 리스크 지표 -->
-                <div class="section-title">리스크 지표</div>
-                <div class="row g-2">
-                    <div class="col-6">
-                        <div class="p-3 rounded-3" style="background:#f8fafc;">
-                            <div class="text-muted" style="font-size:.72rem;font-weight:600;">최대 낙폭 (MDD)</div>
-                            <div id="risk-mdd" class="fw-bold fs-5 mt-1 text-down">—</div>
+                <div id="risk">
+                    <div class="section-title">리스크 지표</div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="p-3 rounded-3" style="background:#f8fafc;">
+                                <div class="text-muted" style="font-size:.72rem;font-weight:600;">최대 낙폭 (MDD)</div>
+                                <div id="risk-mdd" class="fw-bold fs-5 mt-1 text-down">—</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="p-3 rounded-3" style="background:#f8fafc;">
-                            <div class="text-muted" style="font-size:.72rem;font-weight:600;">변동성 (연환산)</div>
-                            <div id="risk-vol" class="fw-bold fs-5 mt-1">—</div>
+                        <div class="col-6">
+                            <div class="p-3 rounded-3" style="background:#f8fafc;">
+                                <div class="text-muted" style="font-size:.72rem;font-weight:600;">변동성 (연환산)</div>
+                                <div id="risk-vol" class="fw-bold fs-5 mt-1">—</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="p-3 rounded-3" style="background:#f8fafc;">
-                            <div class="text-muted" style="font-size:.72rem;font-weight:600;">샤프 지수</div>
-                            <div id="risk-sharpe" class="fw-bold fs-5 mt-1">—</div>
+                        <div class="col-6">
+                            <div class="p-3 rounded-3" style="background:#f8fafc;">
+                                <div class="text-muted" style="font-size:.72rem;font-weight:600;">샤프 지수</div>
+                                <div id="risk-sharpe" class="fw-bold fs-5 mt-1">—</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="p-3 rounded-3" style="background:#f8fafc;">
-                            <div class="text-muted" style="font-size:.72rem;font-weight:600;">HHI (집중도)</div>
-                            <div id="risk-hhi" class="fw-bold fs-5 mt-1">—</div>
-                            <div class="hhi-bar mt-1"><div id="hhi-fill" class="hhi-fill"></div></div>
+                        <div class="col-6">
+                            <div class="p-3 rounded-3" style="background:#f8fafc;">
+                                <div class="text-muted" style="font-size:.72rem;font-weight:600;">HHI (집중도)</div>
+                                <div id="risk-hhi" class="fw-bold fs-5 mt-1">—</div>
+                                <div class="hhi-bar mt-1"><div id="hhi-fill" class="hhi-fill"></div></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -266,7 +269,7 @@
     </div>
 
     <!-- ③ 보유 현황 테이블 -->
-    <div class="section-card bg-white mb-4">
+    <div id="holdings" class="section-card bg-white mb-4">
         <div class="p-4 pb-0">
             <div class="section-title">보유 현황</div>
         </div>
@@ -292,7 +295,7 @@
     </div>
 
     <!-- ④ 자산 배분 -->
-    <div class="row g-3 mb-4">
+    <div id="allocation" class="row g-3 mb-4">
         <!-- 도넛 차트 -->
         <div class="col-12 col-md-5">
             <div class="section-card bg-white p-4 h-100">
