@@ -6,3 +6,4 @@ python-dotenv
 pyjwt
 sqlalchemy
 python-jose[cryptography]
+yfinance
