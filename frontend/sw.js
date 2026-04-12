@@ -1,4 +1,4 @@
-const CACHE_NAME = 'portfolio-v1';
+const CACHE_NAME = 'portfolio-v2';
 const STATIC_ASSETS = [
   '/',
   '/login.html',
@@ -32,7 +32,18 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
-  // Static assets: cache first
+  // HTML and icons: network first (always get latest)
+  if (event.request.url.endsWith('.html') || event.request.url.includes('/icons/')) {
+    event.respondWith(
+      fetch(event.request).then((resp) => {
+        const clone = resp.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        return resp;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+  // Other static assets: cache first
   event.respondWith(
     caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
