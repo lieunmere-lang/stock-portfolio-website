@@ -23,7 +23,7 @@ def _report_to_dict(report: NewsReport) -> dict:
     """NewsReport ORM 객체를 API 응답 dict로 변환한다."""
     return {
         "report_date": report.report_date,
-        "created_at": report.created_at.isoformat() if report.created_at else None,
+        "created_at": report.created_at.isoformat() + "Z" if report.created_at else None,
         "model_used": report.model_used,
         "total_collected": report.total_collected,
         "total_selected": report.total_selected,
