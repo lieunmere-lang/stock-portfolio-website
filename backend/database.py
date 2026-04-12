@@ -4,7 +4,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from sqlalchemy import (
-    Boolean, Column, DateTime, Float, ForeignKey,
+    Boolean, Column, Date, DateTime, Float, ForeignKey,
     Integer, String, Text, create_engine, event, text,
 )
 from sqlalchemy.orm import DeclarativeBase, Session, relationship
@@ -68,12 +68,43 @@ class NewsReport(Base):
     __tablename__ = "news_reports"
 
     id = Column(Integer, primary_key=True)
+    report_date = Column(String(10), nullable=False, unique=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    category = Column(String(50), nullable=False)
-    title = Column(Text, nullable=False)
     summary = Column(Text)
-    source = Column(String(100))
+    model_used = Column(String(50))
+    total_collected = Column(Integer)
+    total_selected = Column(Integer)
+
+    items = relationship("NewsReportItem", back_populates="report", cascade="all, delete-orphan")
+
+
+class NewsReportItem(Base):
+    __tablename__ = "news_report_items"
+
+    id = Column(Integer, primary_key=True)
+    report_id = Column(Integer, ForeignKey("news_reports.id"), nullable=False)
+    category = Column(String(50))
+    title = Column(Text)
+    summary = Column(Text)
+    impact_analysis = Column(Text)
+    related_ticker = Column(String(20))
+    source = Column(String(50))
+    source_url = Column(Text)
+    importance = Column(Integer)
+
+    report = relationship("NewsReport", back_populates="items")
+
+
+class RawNews(Base):
+    __tablename__ = "raw_news"
+
+    id = Column(Integer, primary_key=True)
+    source = Column(String(50))
+    title = Column(Text)
+    content = Column(Text)
     url = Column(Text)
+    published_at = Column(DateTime)
+    collected_at = Column(DateTime, default=datetime.utcnow)
 
 
 class PriceAlert(Base):
@@ -118,6 +149,10 @@ class StockHolding(Base):
 
 
 def init_db():
+    # 기존 news_reports 테이블 DROP (빈 테이블, 스키마 변경을 위해)
+    with engine.connect() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS news_reports"))
+        conn.commit()
     Base.metadata.create_all(bind=engine)
     # 기존 DB에 새 컬럼 추가 (이미 존재하면 무시)
     migration_stmts = [
