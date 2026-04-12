@@ -467,6 +467,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script>
 'use strict';
 
@@ -743,30 +744,49 @@ function renderAllocationChart(assets) {
     const COLORS = ['#3b82f6','#14b8a6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f97316','#a78bfa'];
 
     const totalVal = values.reduce((s,v)=>s+v,0);
-    const pctLabels = labels.map((l,i) => `${l} ${(values[i]/totalVal*100).toFixed(1)}%`);
 
     if (!allocationChart) {
         allocationChart = new Chart(document.getElementById('allocation-chart'), {
             type: 'doughnut',
             data: {
-                labels: pctLabels,
+                labels,
                 datasets: [{ data: values, backgroundColor: COLORS.slice(0, values.length), borderWidth: 2, borderColor: '#fff' }]
             },
+            plugins: [ChartDataLabels],
             options: {
                 cutout: '65%',
                 plugins: {
                     legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 11 } } },
                     tooltip: { callbacks: { label: ctx => {
-                        return ` ${labels[ctx.dataIndex]}: ${(ctx.parsed/totalVal*100).toFixed(1)}%`;
-                    }}}
+                        return ` ${ctx.label}: ${(ctx.parsed/totalVal*100).toFixed(1)}%`;
+                    }}},
+                    datalabels: {
+                        color: '#fff',
+                        font: { weight: 'bold', size: 11 },
+                        formatter: (value) => {
+                            const pct = (value / totalVal * 100);
+                            return pct >= 5 ? pct.toFixed(1) + '%' : '';
+                        },
+                        anchor: 'center',
+                        align: 'center',
+                        textStrokeColor: 'rgba(0,0,0,0.3)',
+                        textStrokeWidth: 2,
+                    }
                 },
                 maintainAspectRatio: false,
             }
         });
     } else {
-        allocationChart.data.labels = pctLabels;
+        allocationChart.data.labels = labels;
         allocationChart.data.datasets[0].data = values;
         allocationChart.data.datasets[0].backgroundColor = COLORS.slice(0, values.length);
+        allocationChart.options.plugins.datalabels.formatter = (value) => {
+            const pct = (value / totalVal * 100);
+            return pct >= 5 ? pct.toFixed(1) + '%' : '';
+        };
+        allocationChart.options.plugins.tooltip.callbacks.label = ctx => {
+            return ` ${ctx.label}: ${(ctx.parsed/totalVal*100).toFixed(1)}%`;
+        };
         allocationChart.update();
     }
 }
