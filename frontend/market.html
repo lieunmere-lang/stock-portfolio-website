@@ -362,14 +362,17 @@ async function loadHeatmap(period) {
 
     d3.treemap()
         .size([width, height])
-        .paddingTop(18)
-        .paddingInner(2)
-        .paddingOuter(2)(root);
+        .paddingTop(22)    // 섹터 라벨 공간
+        .paddingInner(3)   // 섹터 간 간격
+        .paddingOuter(1)
+        .paddingBottom(1)
+        .paddingLeft(1)
+        .paddingRight(1)(root);
 
     // Tooltip reference
     const tooltip = document.getElementById('heatmap-tooltip');
 
-    // Draw sector background rects (depth=1) — clear visual boundaries
+    // Draw sector background — 진한 배경 + 테두리로 섹터 영역 명확히 표시
     svgEl.selectAll('.sector-bg')
         .data(root.children || [])
         .enter()
@@ -379,24 +382,45 @@ async function loadHeatmap(period) {
         .attr('y', d => d.y0)
         .attr('width',  d => Math.max(0, d.x1 - d.x0))
         .attr('height', d => Math.max(0, d.y1 - d.y0))
-        .attr('fill', 'none')
-        .attr('stroke', '#0f172a')
-        .attr('stroke-width', 2);
+        .attr('fill', '#0f172a')
+        .attr('stroke', '#334155')
+        .attr('stroke-width', 1.5)
+        .attr('rx', 3)
+        .attr('ry', 3);
 
-    // Draw sector labels (depth=1 nodes)
+    // Draw sector labels — Finviz처럼 섹터명을 상단 바에 표시
+    svgEl.selectAll('.sector-label-bg')
+        .data(root.children || [])
+        .enter()
+        .append('rect')
+        .attr('x', d => d.x0)
+        .attr('y', d => d.y0)
+        .attr('width',  d => Math.max(0, d.x1 - d.x0))
+        .attr('height', 20)
+        .attr('fill', '#1e293b')
+        .attr('rx', 3)
+        .attr('ry', 3);
+
     svgEl.selectAll('.sector-label')
         .data(root.children || [])
         .enter()
         .append('text')
         .attr('class', 'sector-label')
-        .attr('x', d => d.x0 + 4)
-        .attr('y', d => d.y0 + 13)
-        .attr('fill', '#cbd5e1')
-        .attr('font-size', '10px')
+        .attr('x', d => d.x0 + 6)
+        .attr('y', d => d.y0 + 14)
+        .attr('fill', '#e2e8f0')
+        .attr('font-size', '11px')
         .attr('font-weight', '700')
         .attr('font-family', 'Inter, sans-serif')
         .attr('text-anchor', 'start')
-        .text(d => d.data.name);
+        .text(d => {
+            const w = d.x1 - d.x0;
+            const name = d.data.name;
+            // 공간이 좁으면 축약
+            if (w < 80) return name.slice(0, 5) + '…';
+            if (w < 130) return name.slice(0, 10) + (name.length > 10 ? '…' : '');
+            return name;
+        });
 
     // Build sector lookup for each leaf
     const leafSectorMap = {};
