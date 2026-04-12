@@ -18,6 +18,8 @@ class AssetOut(BaseModel):
     profit_loss_rate: float
     asset_type: str = "crypto"
     first_purchase_date: Any = None
+    signed_change_price: float = 0
+    signed_change_rate: float = 0
 
 
 class PortfolioOut(BaseModel):

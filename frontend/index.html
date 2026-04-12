@@ -365,6 +365,7 @@
                 <thead>
                     <tr>
                         <th>종목</th>
+                        <th class="num">일일변동</th>
                         <th class="num">매수가</th>
                         <th class="num">현재가</th>
                         <th class="num">수량</th>
@@ -373,7 +374,6 @@
                         <th class="num">손익</th>
                         <th class="num">수익률</th>
                         <th class="num">비중</th>
-                        <th class="num">일일변동</th>
                     </tr>
                 </thead>
                 <tbody id="holdings-tbody"></tbody>
@@ -637,6 +637,10 @@ function renderHoldingsTable(assets) {
                 <div class="fw-semibold">${a.name}</div>
                 <div class="text-muted" style="font-size:.72rem;">${a.ticker}</div>
             </td>
+            <td class="num ${dailyCls}" data-flash="${tk}:daily">
+                <div>${KRW(a.signed_change_price)}</div>
+                <div class="text-muted" style="font-size:.72rem;">${PCT(a.signed_change_rate)}</div>
+            </td>
             <td class="num">${KRW(a.avg_price)}</td>
             <td class="num" data-flash="${tk}:price">${KRW(a.current_price)}</td>
             <td class="num">${NUM(a.quantity)}</td>
@@ -651,10 +655,6 @@ function renderHoldingsTable(assets) {
                         <div style="width:${weight}%;height:100%;background:#3b82f6;border-radius:3px;"></div>
                     </div>
                 </div>
-            </td>
-            <td class="num ${dailyCls}" data-flash="${tk}:daily">
-                <div>${KRW(a.signed_change_price)}</div>
-                <div class="text-muted" style="font-size:.72rem;">${PCT(a.signed_change_rate)}</div>
             </td>
         `;
         tbody.appendChild(tr);
