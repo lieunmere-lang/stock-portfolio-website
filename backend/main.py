@@ -10,6 +10,7 @@ from database import init_db
 from routers.analytics import router as analytics_router
 from routers.auth import router as auth_router, verify_token
 from routers.coin import router as coin_router
+from routers.news import router as news_router
 from routers.stock import router as stock_router
 from routers.portfolio import router as portfolio_router
 from scheduler import start_scheduler, stop_scheduler
@@ -47,6 +48,7 @@ app.include_router(portfolio_router, dependencies=[Depends(require_auth)])   # /
 app.include_router(analytics_router, dependencies=[Depends(require_auth)])   # /api/analytics/* (인증 필요)
 app.include_router(coin_router,      dependencies=[Depends(require_auth)])   # /api/coin/* (인증 필요)
 app.include_router(stock_router,     dependencies=[Depends(require_auth)])   # /api/stock/* (인증 필요)
+app.include_router(news_router,      dependencies=[Depends(require_auth)])   # /api/news/* (인증 필요)
 
 
 # ── 수명 주기 ─────────────────────────────────────────────────────────────
