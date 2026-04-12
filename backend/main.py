@@ -15,6 +15,7 @@ from routers.news import router as news_router
 from routers.stock import router as stock_router
 from routers.portfolio import router as portfolio_router
 from scheduler import start_scheduler, stop_scheduler
+from services.market import prewarm_market_caps
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
@@ -58,6 +59,7 @@ app.include_router(market_router,    dependencies=[Depends(require_auth)])   # /
 def startup():
     init_db()
     start_scheduler()
+    prewarm_market_caps()
 
 
 @app.on_event("shutdown")

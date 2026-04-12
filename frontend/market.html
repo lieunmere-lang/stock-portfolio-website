@@ -302,6 +302,7 @@ async function loadHeatmap(period) {
     loadingEl.style.display = 'none';
 
     // Transform flat API response into D3 hierarchy
+    // 실제 달러 기준 시가총액을 그대로 사용 — 셀 크기가 시가총액에 비례
     const hierarchyData = { name: 'Market', children: [] };
 
     // Group stocks by GICS sector
@@ -322,11 +323,14 @@ async function loadHeatmap(period) {
         });
     }
 
-    // Commodities as "Commodities" group
+    // Commodities as "Commodities" group (균등 크기 — 시가총액 개념 없음)
     if (data.commodities && data.commodities.length > 0) {
+        // 원자재는 시가총액이 없으므로 코인 최소값의 10%를 기본값으로 사용
+        const minCoinMcap = Math.min(...(data.coins || []).map(c => c.market_cap || 1e9));
+        const commoditySize = minCoinMcap * 0.1;
         hierarchyData.children.push({
             name: 'Commodities',
-            children: data.commodities.map(c => ({ name: c.ticker, fullName: c.name, market_cap: 1, change_pct: c.change_pct }))
+            children: data.commodities.map(c => ({ name: c.ticker, fullName: c.name, market_cap: commoditySize, change_pct: c.change_pct }))
         });
     }
 
