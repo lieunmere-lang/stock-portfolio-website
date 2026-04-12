@@ -31,8 +31,11 @@ def get_sp500_list() -> List[Dict[str, str]]:
 
     try:
         import pandas as pd
+        import io
         url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-        tables = pd.read_html(url)
+        resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
+        resp.raise_for_status()
+        tables = pd.read_html(io.StringIO(resp.text))
         df = tables[0]
         result = []
         for _, row in df.iterrows():
