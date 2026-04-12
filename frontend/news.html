@@ -590,9 +590,15 @@ function renderReport(report) {
     // Hide empty state
     document.getElementById('empty-state').classList.add('d-none');
 
-    // Header date
-    document.getElementById('report-date').textContent = report.report_date || '—';
-    document.title = `모닝 리포트 ${report.report_date || ''} — My Portfolio`;
+    // Header date + time
+    let dateTimeStr = report.report_date || '—';
+    if (report.created_at) {
+        const d = new Date(report.created_at);
+        const timeStr = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        dateTimeStr = `${report.report_date} ${timeStr}`;
+    }
+    document.getElementById('report-date').textContent = dateTimeStr;
+    document.title = `모닝 리포트 ${dateTimeStr} — My Portfolio`;
 
     // Summary card
     const summaryCard = document.getElementById('summary-card');
