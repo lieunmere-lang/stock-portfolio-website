@@ -12,7 +12,7 @@ from services.collectors import BaseCollector, RawNewsItem, register
 
 logger = logging.getLogger(__name__)
 
-RSS_URL = "https://www.coindesk.com/arc/outboundfeeds/rss/"
+RSS_URL = "https://www.coindesk.com/arc/outboundfeeds/rss"
 
 
 @register

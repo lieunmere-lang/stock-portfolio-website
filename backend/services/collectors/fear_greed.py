@@ -24,7 +24,8 @@ class FearGreedCollector(BaseCollector):
 
         # CNN Fear & Greed (주식)
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
+            headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
+            async with httpx.AsyncClient(timeout=15, headers=headers) as client:
                 resp = await client.get(CNN_URL)
                 resp.raise_for_status()
                 data = resp.json()

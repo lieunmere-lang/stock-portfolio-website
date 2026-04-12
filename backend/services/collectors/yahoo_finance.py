@@ -1,20 +1,16 @@
-"""Yahoo Finance RSS 뉴스 수집기 — 보유 주식 종목별 뉴스."""
+"""Yahoo Finance 뉴스 수집기 — yfinance 라이브러리 사용."""
 
 import logging
-from datetime import datetime, timedelta, timezone
-from email.utils import parsedate_to_datetime
+from datetime import datetime, timezone
 from typing import List
 
-import feedparser
-import httpx
+import yfinance as yf
 from sqlalchemy.orm import Session
 
 from database import StockHolding, engine
 from services.collectors import BaseCollector, RawNewsItem, register
 
 logger = logging.getLogger(__name__)
-
-RSS_URL_TEMPLATE = "https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}"
 
 
 @register
@@ -27,30 +23,39 @@ class YahooFinanceCollector(BaseCollector):
             logger.info("[yahoo_finance] no stock holdings found, skipping")
             return []
 
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
         items: List[RawNewsItem] = []
 
-        async with httpx.AsyncClient(timeout=15) as client:
-            for ticker in tickers:
-                try:
-                    url = RSS_URL_TEMPLATE.format(ticker=ticker)
-                    resp = await client.get(url)
-                    resp.raise_for_status()
-                    feed = feedparser.parse(resp.text)
+        for ticker in tickers:
+            try:
+                stock = yf.Ticker(ticker)
+                news = stock.news or []
 
-                    for entry in feed.entries:
-                        published = self._parse_date(entry)
-                        if published and published < cutoff:
-                            continue
+                for article in news[:5]:
+                    content = article.get("content", {}) if isinstance(article.get("content"), dict) else {}
+                    title = content.get("title", article.get("title", ""))
+                    summary = content.get("summary", article.get("summary", ""))
+                    url = content.get("canonicalUrl", {}).get("url", "") if isinstance(content.get("canonicalUrl"), dict) else article.get("link", "")
+                    pub_date = content.get("pubDate", article.get("providerPublishTime"))
+
+                    published_at = None
+                    if isinstance(pub_date, str):
+                        try:
+                            published_at = datetime.fromisoformat(pub_date.replace("Z", "+00:00"))
+                        except Exception:
+                            pass
+                    elif isinstance(pub_date, (int, float)):
+                        published_at = datetime.fromtimestamp(pub_date, tz=timezone.utc)
+
+                    if title:
                         items.append(RawNewsItem(
                             source=self.name,
-                            title=f"[{ticker}] {entry.get('title', '')}",
-                            content=entry.get("summary", ""),
-                            url=entry.get("link", ""),
-                            published_at=published,
+                            title=f"[{ticker}] {title}",
+                            content=summary,
+                            url=url,
+                            published_at=published_at,
                         ))
-                except Exception as e:
-                    logger.warning(f"[yahoo_finance] failed for {ticker}: {e}")
+            except Exception as e:
+                logger.warning(f"[yahoo_finance] failed for {ticker}: {e}")
 
         return items
 
@@ -61,13 +66,3 @@ class YahooFinanceCollector(BaseCollector):
                 StockHolding.is_active == True
             ).all()
             return [h.ticker for h in holdings]
-
-    @staticmethod
-    def _parse_date(entry) -> datetime:
-        date_str = entry.get("published") or entry.get("updated")
-        if not date_str:
-            return None
-        try:
-            return parsedate_to_datetime(date_str)
-        except Exception:
-            return None
