@@ -373,7 +373,7 @@
                         <th class="num">손익</th>
                         <th class="num">수익률</th>
                         <th class="num">비중</th>
-                        <th class="num">보유기간</th>
+                        <th class="num">일일변동</th>
                     </tr>
                 </thead>
                 <tbody id="holdings-tbody"></tbody>
@@ -625,14 +625,8 @@ function renderHoldingsTable(assets) {
         const cls = pnlClass(pnl);
         const weight = (a.total_value / total * 100).toFixed(1);
         const purchase = a.quantity * a.avg_price;
-        const holdDays = a.first_purchase_date
-            ? Math.floor((Date.now() - new Date(a.first_purchase_date)) / 86400000)
-            : null;
-        const holdText = holdDays != null
-            ? holdDays >= 30 ? `${Math.floor(holdDays/30)}개월` : `${holdDays}일`
-            : '—';
-
         const tk = a.ticker;
+        const dailyCls = pnlClass(a.signed_change_price);
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
         tr.addEventListener('click', () => {
@@ -658,7 +652,10 @@ function renderHoldingsTable(assets) {
                     </div>
                 </div>
             </td>
-            <td class="num text-muted" style="font-size:.8rem;">${holdText}</td>
+            <td class="num ${dailyCls}" data-flash="${tk}:daily">
+                <div>${KRW(a.signed_change_price)}</div>
+                <div class="text-muted" style="font-size:.72rem;">${PCT(a.signed_change_rate)}</div>
+            </td>
         `;
         tbody.appendChild(tr);
     });
