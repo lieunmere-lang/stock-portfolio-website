@@ -388,40 +388,6 @@ async function loadHeatmap(period) {
         .attr('rx', 3)
         .attr('ry', 3);
 
-    // Draw sector labels — Finviz처럼 섹터명을 상단 바에 표시
-    svgEl.selectAll('.sector-label-bg')
-        .data(root.children || [])
-        .enter()
-        .append('rect')
-        .attr('x', d => d.x0)
-        .attr('y', d => d.y0)
-        .attr('width',  d => Math.max(0, d.x1 - d.x0))
-        .attr('height', 20)
-        .attr('fill', '#1e293b')
-        .attr('rx', 3)
-        .attr('ry', 3);
-
-    svgEl.selectAll('.sector-label')
-        .data(root.children || [])
-        .enter()
-        .append('text')
-        .attr('class', 'sector-label')
-        .attr('x', d => d.x0 + 6)
-        .attr('y', d => d.y0 + 14)
-        .attr('fill', '#e2e8f0')
-        .attr('font-size', '11px')
-        .attr('font-weight', '700')
-        .attr('font-family', 'Inter, sans-serif')
-        .attr('text-anchor', 'start')
-        .text(d => {
-            const w = d.x1 - d.x0;
-            const name = d.data.name;
-            // 공간이 좁으면 축약
-            if (w < 80) return name.slice(0, 5) + '…';
-            if (w < 130) return name.slice(0, 10) + (name.length > 10 ? '…' : '');
-            return name;
-        });
-
     // Build sector lookup for each leaf
     const leafSectorMap = {};
     (root.children || []).forEach(sector => {
@@ -516,6 +482,39 @@ async function loadHeatmap(period) {
             const pct = d.data.change_pct;
             if (pct == null) return '';
             return (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+        });
+
+    // Draw sector label bars ON TOP of cells (SVG renders last = on top)
+    svgEl.selectAll('.sector-label-bg')
+        .data(root.children || [])
+        .enter()
+        .append('rect')
+        .attr('x', d => d.x0)
+        .attr('y', d => d.y0)
+        .attr('width',  d => Math.max(0, d.x1 - d.x0))
+        .attr('height', 20)
+        .attr('fill', '#1e293b')
+        .attr('opacity', 0.92);
+
+    svgEl.selectAll('.sector-label')
+        .data(root.children || [])
+        .enter()
+        .append('text')
+        .attr('class', 'sector-label')
+        .attr('x', d => d.x0 + 6)
+        .attr('y', d => d.y0 + 14)
+        .attr('fill', '#e2e8f0')
+        .attr('font-size', '11px')
+        .attr('font-weight', '700')
+        .attr('font-family', 'Inter, sans-serif')
+        .attr('text-anchor', 'start')
+        .text(d => {
+            const w = d.x1 - d.x0;
+            const name = d.data.name;
+            if (w < 60) return '';
+            if (w < 100) return name.slice(0, 6) + '…';
+            if (w < 150) return name.slice(0, 12) + (name.length > 12 ? '…' : '');
+            return name;
         });
 }
 
