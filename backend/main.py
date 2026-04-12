@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
@@ -17,10 +18,24 @@ from routers.portfolio import router as portfolio_router
 from routers.rebalance import router as rebalance_router
 from routers.journal import router as journal_router
 from scheduler import start_scheduler, stop_scheduler
+from bot import start_bot, stop_bot
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
-app = FastAPI(title="Portfolio API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup
+    init_db()
+    start_scheduler()
+    await start_bot()
+    yield
+    # shutdown
+    await stop_bot()
+    stop_scheduler()
+
+
+app = FastAPI(title="Portfolio API", lifespan=lifespan)
 
 # CORS: 로컬 개발 + 동일 origin 허용 (ngrok/Cloudflare는 same-origin으로 접근)
 app.add_middleware(
@@ -56,17 +71,6 @@ app.include_router(market_router,    dependencies=[Depends(require_auth)])   # /
 app.include_router(rebalance_router, dependencies=[Depends(require_auth)])   # /api/rebalance/* (인증 필요)
 app.include_router(journal_router,   dependencies=[Depends(require_auth)])   # /api/journal/* (인증 필요)
 
-
-# ── 수명 주기 ─────────────────────────────────────────────────────────────
-@app.on_event("startup")
-def startup():
-    init_db()
-    start_scheduler()
-
-
-@app.on_event("shutdown")
-def shutdown():
-    stop_scheduler()
 
 
 # ── 헬스체크 ─────────────────────────────────────────────────────────────
