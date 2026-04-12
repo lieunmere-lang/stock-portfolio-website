@@ -1,4 +1,5 @@
 """매매일지 서비스 — 업비트 거래내역 자동 가져오기 + CRUD."""
+import logging
 import os
 import uuid
 from datetime import datetime, timedelta
@@ -10,6 +11,8 @@ from dotenv import load_dotenv
 from hashlib import sha512
 from urllib.parse import urlencode, unquote
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from database import TradeRecord
 
@@ -69,8 +72,8 @@ def sync_upbit_trades(db: Session, days: int = 90) -> Dict[str, Any]:
             )
             res.raise_for_status()
             orders = res.json()
-        except Exception as e:
-            print(f"[Journal] 업비트 주문 내역 조회 실패: {e}")
+        except requests.RequestException as e:
+            logger.error(f"업비트 주문 내역 조회 실패: {e}")
             break
 
         if not orders:
@@ -83,7 +86,7 @@ def sync_upbit_trades(db: Session, days: int = 90) -> Dict[str, Any]:
             # 간단한 ISO 파싱
             try:
                 created = datetime.fromisoformat(order["created_at"].replace("+09:00", ""))
-            except Exception:
+            except (ValueError, KeyError):
                 created = datetime.utcnow()
 
             if created < cutoff:
