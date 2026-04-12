@@ -28,3 +28,9 @@ ngrok.log
 # IDE
 .vscode/
 .idea/
+
+# Superpowers
+.superpowers/
+
+# App cache
+backend/.cache/

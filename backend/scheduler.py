@@ -492,10 +492,8 @@ def start_scheduler():
     )
     scheduler.add_job(
         sync_market_caps,
-        "cron",
-        hour=7,
-        minute=0,
-        timezone="Asia/Seoul",
+        "interval",
+        minutes=10,
         id="market_cap_sync",
         next_run_time=datetime.now(),  # 서버 시작 시 즉시 1회 실행
     )

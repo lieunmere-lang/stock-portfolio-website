@@ -1,9 +1,15 @@
 """시장 상황판 데이터 서비스."""
+import json as _json
+import os
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import requests
 import yfinance as yf
+
+_CACHE_DIR = Path(__file__).resolve().parent.parent / ".cache"
+_MCAP_FILE = _CACHE_DIR / "sp500_market_caps.json"
 
 # ── 캐시 ──────────────────────────────────────────────────────────────────────
 _sp500_cache: Dict[str, Any] = {}          # {"data": [...], "fetched_at": datetime}
@@ -13,7 +19,7 @@ _indicators_cache: Dict[str, Any] = {}     # {"data": {...}, "fetched_at": datet
 SP500_TTL = 86400 * 7    # 7일 (종목 구성은 드물게 변경)
 HEATMAP_TTL = 900         # 15분
 INDICATORS_TTL = 600      # 10분
-MCAP_TTL = 86400          # 24시간
+MCAP_TTL = 600            # 10분
 
 _mcap_cache: Dict[str, Any] = {}  # {"data": {ticker: mcap}, "fetched_at": datetime}
 
@@ -174,16 +180,38 @@ def _fetch_stock_heatmap(period: str) -> List[Dict]:
 
 
 def _get_sp500_market_caps(tickers: List[str]) -> Dict[str, float]:
-    """S&P500 종목 실제 시가총액 일괄 조회 (24시간 캐시).
+    """S&P500 종목 실제 시가총액 조회 (파일 캐시 24시간).
 
-    캐시가 있으면 즉시 반환. 없으면 배치로 조회.
+    파일 캐시(.cache/sp500_market_caps.json)를 먼저 확인.
+    없거나 오래되면 yfinance로 일괄 조회 후 파일에 저장.
     """
+    # 1) 메모리 캐시 확인
     now = datetime.utcnow()
     cached = _mcap_cache
     if cached.get("data") and cached.get("fetched_at"):
         if (now - cached["fetched_at"]).total_seconds() < MCAP_TTL:
             return cached["data"]
 
+    # 2) 파일 캐시 확인
+    stale_data = None
+    if _MCAP_FILE.exists():
+        try:
+            file_data = _json.loads(_MCAP_FILE.read_text())
+            fetched_at = datetime.fromisoformat(file_data["fetched_at"])
+            stale_data = file_data["data"]  # 만료되더라도 fallback용 보관
+            if (now - fetched_at).total_seconds() < MCAP_TTL:
+                _mcap_cache["data"] = file_data["data"]
+                _mcap_cache["fetched_at"] = fetched_at
+                return file_data["data"]
+        except Exception as e:
+            print(f"[Market] 파일 캐시 로드 실패: {e}")
+
+    # 3) yfinance에서 일괄 조회 (동기화 중에는 이전값 반환)
+    # 히트맵 API 요청 시에는 기존 캐시 반환, 스케줄러가 백그라운드에서 갱신
+    if stale_data:
+        _mcap_cache["data"] = stale_data
+        _mcap_cache["fetched_at"] = now  # 임시로 TTL 리셋 (스케줄러가 곧 갱신)
+        return stale_data
     print("[Market] S&P500 시가총액 일괄 조회 시작...")
     mcap_dict: Dict[str, float] = {}
     batch_size = 50
@@ -202,8 +230,18 @@ def _get_sp500_market_caps(tickers: List[str]) -> Dict[str, float]:
             for ticker in batch:
                 mcap_dict.setdefault(ticker, 0)
 
+    # 메모리 + 파일 캐시 저장
     _mcap_cache["data"] = mcap_dict
     _mcap_cache["fetched_at"] = now
+    try:
+        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        _MCAP_FILE.write_text(_json.dumps({
+            "data": mcap_dict,
+            "fetched_at": now.isoformat(),
+        }))
+    except Exception as e:
+        print(f"[Market] 파일 캐시 저장 실패: {e}")
+
     print(f"[Market] 시가총액 조회 완료: {len(mcap_dict)}개")
     return mcap_dict
 
