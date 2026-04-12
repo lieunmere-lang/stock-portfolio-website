@@ -156,14 +156,15 @@ def sync_portfolio() -> None:
                 timeout=10,
             )
             price_res.raise_for_status()
-            manual_price_map = {t["market"]: float(t["trade_price"]) for t in price_res.json()}
+            manual_price_map = {t["market"]: t for t in price_res.json()}
         except Exception as e:
             print(f"[Sync] 수동 자산 가격 조회 실패: {e}")
             manual_price_map = {}
 
         for m in manual_assets:
-            cur_price = manual_price_map.get(m.price_ticker)
-            if cur_price:
+            ticker_data = manual_price_map.get(m.price_ticker)
+            if ticker_data:
+                cur_price = float(ticker_data["trade_price"])
                 raw_assets.append({
                     "name": m.name,
                     "ticker": m.ticker,
@@ -171,6 +172,8 @@ def sync_portfolio() -> None:
                     "avg_price": m.avg_price,
                     "current_price": cur_price,
                     "first_purchase_date": m.first_purchase_date,
+                    "signed_change_price": float(ticker_data["signed_change_price"]),
+                    "signed_change_rate": float(ticker_data["signed_change_rate"]),
                 })
 
     total_value = 0.0
@@ -198,6 +201,8 @@ def sync_portfolio() -> None:
                 "profit_loss": pl,
                 "profit_loss_rate": plr,
                 "asset_type": a.get("asset_type", "crypto"),
+                "signed_change_price": a.get("signed_change_price", 0),
+                "signed_change_rate": a.get("signed_change_rate", 0),
             }
         )
 
