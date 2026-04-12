@@ -1,8 +1,11 @@
 """코인 상세 정보 라우터 — CoinGecko API 기반"""
+import logging
 from typing import Any, Dict, Optional
 
 import requests
 from fastapi import APIRouter, HTTPException
+
+logger = logging.getLogger(__name__)
 
 from services.analyzer import COINGECKO_BASE, COINGECKO_TIMEOUT, UPBIT_TO_COINGECKO
 from services.upbit import fetch_upbit_candles
@@ -46,7 +49,8 @@ def get_coin_detail(ticker: str) -> Dict[str, Any]:
         res.raise_for_status()
         data = res.json()
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"CoinGecko 조회 실패: {e}")
+        logger.error(f"CoinGecko API error: {e}")
+        raise HTTPException(status_code=503, detail="외부 서비스 일시 오류")
 
     md = data.get("market_data", {})
     links = data.get("links", {})

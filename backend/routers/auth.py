@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 import logging
 import os
 import secrets as _secrets
+from collections import defaultdict
 from datetime import datetime, timedelta
+from time import time
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from jose import jwt
 from pydantic import BaseModel
 
@@ -24,6 +28,23 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
 
 router = APIRouter(prefix="/auth")
+
+# --------------- Rate Limiting ---------------
+_login_attempts: dict[str, list[float]] = defaultdict(list)
+_MAX_ATTEMPTS = 5
+_WINDOW_SECONDS = 300  # 5 minutes
+
+
+def _check_rate_limit(client_ip: str) -> bool:
+    """Returns True if rate limited."""
+    now = time()
+    attempts = _login_attempts[client_ip]
+    # Clean old attempts
+    _login_attempts[client_ip] = [t for t in attempts if now - t < _WINDOW_SECONDS]
+    if len(_login_attempts[client_ip]) >= _MAX_ATTEMPTS:
+        return True
+    _login_attempts[client_ip].append(now)
+    return False
 
 
 class LoginRequest(BaseModel):
@@ -56,7 +77,13 @@ def verify_token(token: str) -> str:
 
 
 @router.post("/token", response_model=TokenResponse)
-def login(body: LoginRequest):
+def login(body: LoginRequest, request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    if _check_rate_limit(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many login attempts. Try again later.",
+        )
     valid = (
         _secrets.compare_digest(body.username, APP_USERNAME)
         and _secrets.compare_digest(body.password, APP_PASSWORD)

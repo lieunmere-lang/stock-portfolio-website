@@ -1,8 +1,12 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from database import NewsReport, NewsReportItem, engine
 from routers.auth import verify_token
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/news")
 
@@ -116,4 +120,5 @@ def generate_report(user: str = Depends(require_auth)):
         report_data = generate_news_report()
         return {"status": "ok", "report": report_data}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"리포트 생성 실패: {str(e)}")
+        logger.error(f"News report generation failed: {e}")
+        raise HTTPException(status_code=500, detail="리포트 생성 실패")
