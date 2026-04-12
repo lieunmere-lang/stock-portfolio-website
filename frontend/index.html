@@ -459,6 +459,51 @@ let allocationChart = null;
 let cumulativeChart = null;
 let currentHistoryDays = 90;
 
+// ── Flash highlight ──────────────────────────────────────────────────────────
+function snapshotFlashTargets() {
+    const map = new Map();
+    document.querySelectorAll('[data-flash]').forEach(el => {
+        map.set(el.getAttribute('data-flash'), el.textContent.trim());
+    });
+    return map;
+}
+
+function parseNumeric(text) {
+    const cleaned = text.replace(/[₩,%+\s]/g, '').replace(/,/g, '');
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? null : num;
+}
+
+function applyFlash(prevSnapshot) {
+    document.querySelectorAll('[data-flash]').forEach(el => {
+        const key = el.getAttribute('data-flash');
+        const prev = prevSnapshot.get(key);
+        const curr = el.textContent.trim();
+        if (prev == null || prev === curr) return;
+
+        const prevNum = parseNumeric(prev);
+        const currNum = parseNumeric(curr);
+        let cls;
+        if (prevNum !== null && currNum !== null && prevNum !== currNum) {
+            cls = currNum > prevNum ? 'flash-up' : 'flash-down';
+        } else {
+            cls = 'flash-neutral';
+        }
+
+        el.classList.remove('flash-up', 'flash-down', 'flash-neutral');
+        // force reflow to restart animation if same class
+        void el.offsetWidth;
+        el.classList.add(cls);
+    });
+}
+
+// auto-remove flash class after animation ends
+document.addEventListener('animationend', e => {
+    if (e.animationName === 'flash-fade') {
+        e.target.classList.remove('flash-up', 'flash-down', 'flash-neutral');
+    }
+});
+
 // ── API helpers ───────────────────────────────────────────────────────────────
 async function apiFetch(url) {
     const headers = getAuthHeaders();
