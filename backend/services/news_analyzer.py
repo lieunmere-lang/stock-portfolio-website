@@ -141,7 +141,7 @@ async def analyze_news(
 
     response = client.messages.create(
         model=model,
-        max_tokens=4096,
+        max_tokens=8192,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_message}],
     )
@@ -152,7 +152,8 @@ async def analyze_news(
         report_data = _parse_response(response_text)
     except (json.JSONDecodeError, ValueError) as e:
         logger.warning(f"Claude 응답 JSON 파싱 실패: {e}")
-        logger.debug(f"응답 원문: {response_text[:500]}")
+        logger.warning(f"응답 원문 (앞 500자): {response_text[:500]}")
+        logger.warning(f"stop_reason: {response.stop_reason}, usage: input={response.usage.input_tokens}, output={response.usage.output_tokens}")
         return _empty_report(model)
 
     report_data["model_used"] = model
