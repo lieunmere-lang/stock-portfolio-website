@@ -13,6 +13,9 @@ _indicators_cache: Dict[str, Any] = {}     # {"data": {...}, "fetched_at": datet
 SP500_TTL = 86400 * 7    # 7일 (종목 구성은 드물게 변경)
 HEATMAP_TTL = 900         # 15분
 INDICATORS_TTL = 600      # 10분
+MCAP_TTL = 86400          # 24시간
+
+_mcap_cache: Dict[str, Any] = {}  # {"data": {ticker: mcap}, "fetched_at": datetime}
 
 
 def get_sp500_list() -> List[Dict[str, str]]:
@@ -46,3 +49,203 @@ def get_sp500_list() -> List[Dict[str, str]]:
     except Exception as e:
         print(f"[Market] S&P500 목록 로드 실패: {e}")
         return _sp500_cache.get("data", [])
+
+
+# ── 기간 변환 ─────────────────────────────────────────────────────────────────
+
+def _period_to_yf(period: str) -> str:
+    """프론트엔드 period 문자열을 yfinance period로 변환."""
+    mapping = {
+        "1d": "2d",
+        "1w": "6d",
+        "1mo": "1mo",
+        "ytd": "ytd",
+    }
+    return mapping.get(period, "2d")
+
+
+# ── 히트맵 데이터 수집 ────────────────────────────────────────────────────────
+
+def fetch_heatmap_data(period: str = "1d") -> Dict[str, List[Dict]]:
+    """히트맵 데이터 반환. {"stocks": [...], "coins": [...], "commodities": [...]}
+
+    _heatmap_cache에 period별로 캐시(15분 TTL).
+    """
+    now = datetime.utcnow()
+    cached = _heatmap_cache.get(period)
+    if cached and cached.get("data") and cached.get("fetched_at"):
+        if (now - cached["fetched_at"]).total_seconds() < HEATMAP_TTL:
+            return cached["data"]
+
+    stocks = _fetch_stock_heatmap(period)
+    coins = _fetch_coin_heatmap(period)
+    commodities = _fetch_commodity_heatmap(period)
+
+    result = {"stocks": stocks, "coins": coins, "commodities": commodities}
+    _heatmap_cache[period] = {"data": result, "fetched_at": now}
+    return result
+
+
+def _fetch_stock_heatmap(period: str) -> List[Dict]:
+    """S&P500 종목 히트맵 데이터 수집."""
+    yf_period = _period_to_yf(period)
+    sp500 = get_sp500_list()
+    if not sp500:
+        return []
+
+    tickers = [item["ticker"] for item in sp500]
+    ticker_meta = {item["ticker"]: item for item in sp500}
+
+    try:
+        data = yf.download(
+            tickers,
+            period=yf_period,
+            group_by="ticker",
+            threads=True,
+            progress=False,
+        )
+    except Exception as e:
+        print(f"[Market] S&P500 히트맵 다운로드 실패: {e}")
+        return []
+
+    market_caps = _get_sp500_market_caps(tickers)
+
+    result = []
+    for ticker in tickers:
+        try:
+            ticker_data = data[ticker]
+            if ticker_data is None or len(ticker_data) < 2:
+                continue
+            closes = ticker_data["Close"].dropna()
+            if len(closes) < 2:
+                continue
+            first_close = float(closes.iloc[0])
+            last_close = float(closes.iloc[-1])
+            if first_close == 0:
+                continue
+            change_pct = (last_close - first_close) / first_close * 100
+            meta = ticker_meta.get(ticker, {})
+            result.append({
+                "ticker": ticker,
+                "name": meta.get("name", ticker),
+                "sector": meta.get("sector", ""),
+                "market_cap": market_caps.get(ticker, 0),
+                "change_pct": round(change_pct, 2),
+            })
+        except Exception as e:
+            print(f"[Market] {ticker} 히트맵 처리 오류: {e}")
+            continue
+
+    return result
+
+
+def _get_sp500_market_caps(tickers: List[str]) -> Dict[str, float]:
+    """S&P500 종목 시가총액 일괄 조회. 24시간 캐시."""
+    now = datetime.utcnow()
+    cached = _mcap_cache
+    if cached.get("data") and cached.get("fetched_at"):
+        if (now - cached["fetched_at"]).total_seconds() < MCAP_TTL:
+            return cached["data"]
+
+    mcap_dict: Dict[str, float] = {}
+    batch_size = 50
+
+    for i in range(0, len(tickers), batch_size):
+        batch = tickers[i: i + batch_size]
+        try:
+            tickers_obj = yf.Tickers(" ".join(batch))
+            for ticker in batch:
+                try:
+                    fast_info = tickers_obj.tickers[ticker].fast_info
+                    mcap = getattr(fast_info, "market_cap", None) or 0
+                    mcap_dict[ticker] = float(mcap)
+                except Exception:
+                    mcap_dict[ticker] = 0
+        except Exception as e:
+            print(f"[Market] 시가총액 배치 조회 실패 (배치 {i}): {e}")
+            for ticker in batch:
+                mcap_dict.setdefault(ticker, 0)
+
+    _mcap_cache["data"] = mcap_dict
+    _mcap_cache["fetched_at"] = now
+    return mcap_dict
+
+
+def _fetch_coin_heatmap(period: str) -> List[Dict]:
+    """CoinGecko에서 상위 5개 코인 히트맵 데이터 수집."""
+    period_field_map = {
+        "1d": "price_change_percentage_24h",
+        "1w": "price_change_percentage_7d_in_currency",
+        "1mo": "price_change_percentage_30d_in_currency",
+        "ytd": "price_change_percentage_24h",  # ytd는 24h로 대체
+    }
+    change_field = period_field_map.get(period, "price_change_percentage_24h")
+
+    url = "https://api.coingecko.com/api/v3/coins/markets"
+    params = {
+        "vs_currency": "usd",
+        "order": "market_cap_desc",
+        "per_page": 5,
+        "page": 1,
+        "sparkline": "false",
+        "price_change_percentage": "1h,24h,7d,30d",
+    }
+
+    try:
+        resp = requests.get(url, params=params, timeout=10)
+        resp.raise_for_status()
+        coins = resp.json()
+    except Exception as e:
+        print(f"[Market] CoinGecko 코인 히트맵 조회 실패: {e}")
+        return []
+
+    result = []
+    for coin in coins:
+        try:
+            change_pct = coin.get(change_field) or 0.0
+            result.append({
+                "ticker": str(coin.get("symbol", "")).upper(),
+                "name": coin.get("name", ""),
+                "market_cap": coin.get("market_cap", 0),
+                "change_pct": round(float(change_pct), 2),
+            })
+        except Exception as e:
+            print(f"[Market] 코인 히트맵 처리 오류: {e}")
+            continue
+
+    return result
+
+
+def _fetch_commodity_heatmap(period: str) -> List[Dict]:
+    """금, 은, WTI 원자재 히트맵 데이터 수집."""
+    yf_period = _period_to_yf(period)
+    commodities = [
+        ("GC=F", "금", "GOLD"),
+        ("SI=F", "은", "SILVER"),
+        ("CL=F", "WTI", "WTI"),
+    ]
+
+    result = []
+    for yf_ticker, name, display_ticker in commodities:
+        try:
+            hist = yf.Ticker(yf_ticker).history(period=yf_period)
+            if hist is None or len(hist) < 2:
+                continue
+            closes = hist["Close"].dropna()
+            if len(closes) < 2:
+                continue
+            first_close = float(closes.iloc[0])
+            last_close = float(closes.iloc[-1])
+            if first_close == 0:
+                continue
+            change_pct = (last_close - first_close) / first_close * 100
+            result.append({
+                "ticker": display_ticker,
+                "name": name,
+                "change_pct": round(change_pct, 2),
+            })
+        except Exception as e:
+            print(f"[Market] {yf_ticker} 원자재 히트맵 처리 오류: {e}")
+            continue
+
+    return result
