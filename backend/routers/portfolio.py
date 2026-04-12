@@ -21,6 +21,8 @@ class AssetOut(BaseModel):
     signed_change_price: float = 0
     signed_change_rate: float = 0
     currency: str = "KRW"
+    avg_price_usd: float = None
+    current_price_usd: float = None
 
 
 class PortfolioOut(BaseModel):

@@ -8,6 +8,7 @@ import requests
 from sqlalchemy.orm import Session as DBSession
 
 from database import AssetSnapshot, PortfolioSnapshot
+from scheduler import get_portfolio_cache
 
 # 무위험이자율 (한국 기준금리 기반 연 3.5%)
 RISK_FREE_RATE = 0.035
@@ -66,7 +67,15 @@ COINGECKO_TIMEOUT = 10
 # ── DB 기반 분석 ──────────────────────────────────────────────────────────────
 
 def get_period_returns(db: DBSession, current_value: float) -> Dict[str, Optional[float]]:
-    """DB 스냅샷으로 기간별 수익률 계산 (1d, 1w, 1m, 3m, 6m, 1y)."""
+    """DB 스냅샷으로 기간별 수익률 계산 (1d, 1w, 1m, 3m, 6m, 1y).
+
+    수익률 = 과거 시점 수익률 대비 현재 수익률 변동분.
+    (평가액/투자원금 비율 기준이라 자산 추가/삭제에 영향받지 않음)
+    """
+    cache = get_portfolio_cache()
+    current_investment = cache.get("total_investment", 0) if cache else 0
+    current_return = (current_value / current_investment - 1) if current_investment and current_investment > 0 else 0.0
+
     periods = {
         "1d": timedelta(days=1),
         "1w": timedelta(weeks=1),
@@ -78,14 +87,25 @@ def get_period_returns(db: DBSession, current_value: float) -> Dict[str, Optiona
     results: Dict[str, Optional[float]] = {}
     for key, delta in periods.items():
         target_time = datetime.utcnow() - delta
-        snap = (
+        # target 이전 가장 가까운 스냅샷
+        before = (
             db.query(PortfolioSnapshot)
             .filter(PortfolioSnapshot.timestamp <= target_time)
             .order_by(PortfolioSnapshot.timestamp.desc())
             .first()
         )
+        # target 이후 가장 가까운 스냅샷 (이전이 없을 때 fallback)
+        after = (
+            db.query(PortfolioSnapshot)
+            .filter(PortfolioSnapshot.timestamp > target_time)
+            .order_by(PortfolioSnapshot.timestamp.asc())
+            .first()
+        ) if not before else None
+        snap = before or after
         if snap and snap.total_value and snap.total_value > 0:
-            results[key] = (current_value - snap.total_value) / snap.total_value
+            past_inv = snap.total_investment or snap.total_value
+            past_return = (snap.total_value / past_inv - 1) if past_inv > 0 else 0.0
+            results[key] = current_return - past_return
         else:
             results[key] = None
     return results
@@ -110,16 +130,20 @@ def get_history(db: DBSession, days: int = 365) -> Dict[str, List]:
         return {"timestamps": [], "values": [], "cumulative_returns": []}
 
     # 날짜별 마지막 스냅샷 (asc 정렬이므로 덮어쓰면 자연스럽게 마지막 값이 남음)
-    daily: Dict[str, float] = {}
+    daily: Dict[str, tuple] = {}  # day -> (total_value, total_investment)
     for s in snapshots:
         day_key = s.timestamp.strftime("%Y-%m-%d")
-        daily[day_key] = s.total_value
+        daily[day_key] = (s.total_value, s.total_investment or s.total_value)
 
     sorted_days = sorted(daily.keys())
-    values = [daily[d] for d in sorted_days]
+    values = [daily[d][0] for d in sorted_days]
 
-    base = values[0] if values[0] else 1
-    cumulative_returns = [(v - base) / base for v in values]
+    # 누적 수익률: (평가액 - 투자원금) / 투자원금 (자산 추가/삭제에 영향받지 않음)
+    cumulative_returns = []
+    for d in sorted_days:
+        val, inv = daily[d]
+        ret = (val - inv) / inv if inv and inv > 0 else 0.0
+        cumulative_returns.append(ret)
 
     return {
         "timestamps": sorted_days,   # "YYYY-MM-DD" 형식

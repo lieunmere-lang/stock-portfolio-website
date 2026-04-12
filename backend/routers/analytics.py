@@ -1,12 +1,15 @@
 """분석 데이터 API 라우터."""
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+import requests
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from database import get_db
 from scheduler import get_portfolio_cache
 from services import analyzer
+from services.stock import get_usd_krw
 
 router = APIRouter(prefix="/api/analytics")
 
@@ -49,13 +52,39 @@ def get_analytics_history(
     return analyzer.get_history(db, days=days)
 
 
-@router.get("/beta")
-def get_portfolio_beta() -> Dict[str, Any]:
-    """포트폴리오 베타 (CoinGecko 기반, 다소 느림)."""
-    cache = get_portfolio_cache()
-    assets = cache.get("assets", []) if cache else []
-    beta = analyzer.calculate_beta(assets)
-    return {"beta": round(beta, 3) if beta is not None else None}
+
+_fng_cache: Dict[str, Any] = {}
+
+
+@router.get("/market")
+def get_market_indicators() -> Dict[str, Any]:
+    """공포탐욕지수 + USD/KRW 환율."""
+    global _fng_cache
+
+    # 공포탐욕지수 (10분 캐시)
+    fng = None
+    now = datetime.utcnow()
+    if _fng_cache.get("data") and _fng_cache.get("fetched_at"):
+        if (now - _fng_cache["fetched_at"]).total_seconds() < 600:
+            fng = _fng_cache["data"]
+
+    if not fng:
+        try:
+            res = requests.get("https://api.alternative.me/fng/", timeout=5)
+            res.raise_for_status()
+            d = res.json()["data"][0]
+            fng = {"value": int(d["value"]), "label": d["value_classification"]}
+            _fng_cache = {"data": fng, "fetched_at": now}
+        except Exception:
+            fng = None
+
+    # USD/KRW 환율
+    usd_krw = get_usd_krw()
+
+    return {
+        "fear_greed": fng,
+        "usd_krw": round(usd_krw, 2) if usd_krw else None,
+    }
 
 
 @router.get("/correlation")

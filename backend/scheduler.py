@@ -20,60 +20,110 @@ def get_portfolio_cache() -> Dict[str, Any]:
 
 
 def backfill_historical_snapshots(assets: List[Dict]) -> None:
-    """현재 보유 자산 수량 기준으로 과거 365일 포트폴리오 가치를 역산해 DB에 삽입.
+    """현재 보유 자산 수량 기준으로 과거 포트폴리오 가치를 역산해 DB에 삽입.
 
-    이미 해당 날짜의 스냅샷이 있으면 건너뜀 (중복 방지).
-    '현재 수량으로 과거에도 보유했다면' 기준의 시뮬레이션 데이터.
+    - 암호화폐: 업비트 일봉 캔들 (최대 365일)
+    - US 주식: yfinance 히스토리 + USD/KRW 환율
+    - first_purchase_date 이전 날짜에는 해당 자산 제외
+    - 이미 해당 날짜의 스냅샷이 있으면 건너뜀 (중복 방지)
     """
     if not assets:
         return
 
     print("[Backfill] 과거 데이터 수집 시작...")
 
-    # 티커별 365일 일봉 캔들 수집
-    # 스테이킹 자산(ETH2 등)은 해당 마켓이 없으므로 실제 가격 티커를 사용
+    # ── 1) 암호화폐: 업비트 캔들 수집 ──
     staking_ticker_alias: Dict[str, str] = {
         info["ticker"]: info["price_ticker"].replace("KRW-", "")
         for info in STAKING_MAP.values()
-    }  # ex: {"KRW-ETH2": "ETH"}
+    }
 
     ticker_prices: Dict[str, Dict[str, float]] = {}
     for asset in assets:
         ticker = asset["ticker"]
-        # 스테이킹 자산이면 실제 캔들 티커로 교체 (KRW-ETH2 → KRW-ETH)
+        if asset.get("asset_type", "crypto") != "crypto":
+            continue
         candle_ticker = ticker
         if ticker in staking_ticker_alias:
             candle_ticker = f"KRW-{staking_ticker_alias[ticker]}"
 
         price_map = fetch_upbit_candles(candle_ticker, count=365)
         if price_map:
-            ticker_prices[ticker] = price_map  # 원래 티커 키로 저장
+            ticker_prices[ticker] = price_map
             print(f"[Backfill] {ticker} (캔들: {candle_ticker}): {len(price_map)}일치 데이터 수집")
 
+    # ── 2) US 주식: yfinance 히스토리 + USD/KRW 환율 ──
+    stock_assets = [a for a in assets if a.get("asset_type") == "stock"]
+    if stock_assets:
+        import yfinance as yf
+
+        # USD/KRW 과거 환율
+        try:
+            fx_hist = yf.Ticker("USDKRW=X").history(period="1y")
+            fx_by_date = {d.strftime("%Y-%m-%d"): float(fx_hist["Close"].iloc[i])
+                         for i, d in enumerate(fx_hist.index)}
+            print(f"[Backfill] USD/KRW 환율: {len(fx_by_date)}일치 데이터 수집")
+        except Exception as e:
+            print(f"[Backfill] USD/KRW 환율 조회 실패: {e}")
+            fx_by_date = {}
+
+        if fx_by_date:
+            for asset in stock_assets:
+                ticker = asset["ticker"]
+                try:
+                    hist = yf.Ticker(ticker).history(period="1y")
+                    if hist.empty:
+                        continue
+                    price_map = {}
+                    for i, d in enumerate(hist.index):
+                        date_str = d.strftime("%Y-%m-%d")
+                        fx_rate = fx_by_date.get(date_str)
+                        if fx_rate:
+                            price_map[date_str] = float(hist["Close"].iloc[i]) * fx_rate
+                    if price_map:
+                        ticker_prices[ticker] = price_map
+                        print(f"[Backfill] {ticker} (yfinance): {len(price_map)}일치 데이터 수집")
+                except Exception as e:
+                    print(f"[Backfill] {ticker} 조회 실패: {e}")
+
     if not ticker_prices:
-        print("[Backfill] 수집된 캔들 데이터 없음. 중단.")
+        print("[Backfill] 수집된 데이터 없음. 중단.")
         return
 
-    # 모든 자산에 데이터가 있는 날짜만 사용
-    common_dates = None
+    # ── 3) 주말/공휴일 갭 채우기 (직전 거래일 종가로 forward-fill) ──
+    all_dates: set = set()
     for price_map in ticker_prices.values():
-        dates = set(price_map.keys())
-        common_dates = dates if common_dates is None else common_dates & dates
+        all_dates |= set(price_map.keys())
 
-    if not common_dates:
-        print("[Backfill] 공통 날짜 없음. 중단.")
-        return
+    if all_dates:
+        min_date = datetime.strptime(min(all_dates), "%Y-%m-%d")
+        max_date = datetime.strptime(max(all_dates), "%Y-%m-%d")
+        # 최소~최대 날짜 사이 모든 날짜 생성
+        d = min_date
+        while d <= max_date:
+            all_dates.add(d.strftime("%Y-%m-%d"))
+            d += timedelta(days=1)
 
-    sorted_dates = sorted(common_dates)
+        # 각 자산별 forward-fill: 가격 데이터가 없는 날은 직전 값 사용
+        for ticker, price_map in ticker_prices.items():
+            filled = {}
+            sorted_all = sorted(all_dates)
+            last_price = None
+            for ds in sorted_all:
+                if ds in price_map:
+                    last_price = price_map[ds]
+                if last_price is not None:
+                    filled[ds] = last_price
+            ticker_prices[ticker] = filled
+
+    sorted_dates = sorted(all_dates)
 
     inserted = 0
     with Session(engine) as db:
         for date_str in sorted_dates:
-            # 오늘 날짜는 실시간 sync가 담당 → 스킵
             if date_str >= datetime.utcnow().strftime("%Y-%m-%d"):
                 continue
 
-            # 해당 날짜 스냅샷이 이미 있으면 스킵
             day_start = datetime.strptime(date_str, "%Y-%m-%d")
             day_end = day_start + timedelta(days=1)
             exists = (
@@ -90,6 +140,13 @@ def backfill_historical_snapshots(assets: List[Dict]) -> None:
             total_value = 0.0
             total_investment = 0.0
             for asset in assets:
+                # first_purchase_date 이전이면 스킵
+                fpd = asset.get("first_purchase_date")
+                if fpd:
+                    fpd_str = fpd.strftime("%Y-%m-%d") if isinstance(fpd, datetime) else str(fpd)[:10]
+                    if date_str < fpd_str:
+                        continue
+
                 prices = ticker_prices.get(asset["ticker"])
                 if not prices:
                     continue
@@ -105,8 +162,6 @@ def backfill_historical_snapshots(assets: List[Dict]) -> None:
             total_pl = total_value - total_investment
             total_plr = (total_value / total_investment - 1) if total_investment > 0 else 0.0
 
-            # UTC 기준 해당 날짜 00:00:00 저장 (KST 기준 날짜이므로 -9h = UTC 전날 15:00이나
-            # 분석 로직은 날짜 문자열로 resample하므로 자정 UTC로 저장해도 무방)
             snapshot = PortfolioSnapshot(
                 timestamp=day_start,
                 total_value=total_value,
@@ -123,12 +178,22 @@ def backfill_historical_snapshots(assets: List[Dict]) -> None:
     print(f"[Backfill] 완료: {inserted}개 스냅샷 삽입 ({len(sorted_dates)}일 처리)")
 
 
+# 업비트 자산 최초 매수일 (API에서 제공하지 않으므로 수동 매핑)
+UPBIT_PURCHASE_DATES = {
+    "KRW-BTC": datetime(2022, 4, 18),
+}
+
+
 def sync_portfolio() -> None:
     global _portfolio_cache, _backfill_done
     print(f"[{datetime.now().isoformat()}] Syncing portfolio...")
 
     try:
         raw_assets = fetch_upbit_assets()
+        # 업비트 자산에 수동 매핑된 매수일 주입
+        for a in raw_assets:
+            if a["ticker"] in UPBIT_PURCHASE_DATES:
+                a["first_purchase_date"] = UPBIT_PURCHASE_DATES[a["ticker"]]
     except Exception as e:
         print(f"[Sync] 업비트 데이터 조회 실패: {e}")
         # 이전 캐시 유지 (있으면), 없으면 빈 포트폴리오로 초기화
@@ -206,6 +271,8 @@ def sync_portfolio() -> None:
                         "quantity": s.quantity,
                         "avg_price": avg_price_krw,
                         "current_price": cur_price_krw,
+                        "avg_price_usd": s.avg_price,
+                        "current_price_usd": cur_price_usd,
                         "first_purchase_date": s.first_purchase_date,
                         "asset_type": "stock",
                         "signed_change_price": signed_change_price,
@@ -241,24 +308,17 @@ def sync_portfolio() -> None:
                 "asset_type": a.get("asset_type", "crypto"),
                 "signed_change_price": a.get("signed_change_price", 0),
                 "signed_change_rate": a.get("signed_change_rate", 0),
+                "first_purchase_date": a.get("first_purchase_date"),
+                "avg_price_usd": a.get("avg_price_usd"),
+                "current_price_usd": a.get("current_price_usd"),
             }
         )
 
     total_pl = total_value - total_purchase
     total_plr = (total_value / total_purchase - 1) if total_purchase > 0 else 0.0
 
-    # 오늘의 손익: 24시간 전 스냅샷 대비
-    today_pl = None
-    with Session(engine) as db:
-        cutoff = datetime.utcnow() - timedelta(hours=24)
-        past_snapshot = (
-            db.query(PortfolioSnapshot)
-            .filter(PortfolioSnapshot.timestamp <= cutoff)
-            .order_by(PortfolioSnapshot.timestamp.desc())
-            .first()
-        )
-        if past_snapshot and past_snapshot.total_value:
-            today_pl = total_value - past_snapshot.total_value
+    # 오늘의 손익: 각 자산의 당일 변동분 합산 (자산 추가/삭제에 영향받지 않음)
+    today_pl = sum(a.get("signed_change_price", 0) * a["quantity"] for a in raw_assets)
 
     # 메모리 캐시 갱신
     _portfolio_cache = {
@@ -283,8 +343,10 @@ def sync_portfolio() -> None:
         )
         db.add(snapshot)
         db.flush()
+        # DB에 저장하지 않는 필드 제외
+        db_exclude = {"avg_price_usd", "current_price_usd", "first_purchase_date"}
         for a in asset_rows:
-            db.add(AssetSnapshot(snapshot_id=snapshot.id, **a))
+            db.add(AssetSnapshot(snapshot_id=snapshot.id, **{k: v for k, v in a.items() if k not in db_exclude}))
         db.commit()
 
     print("Sync complete.")

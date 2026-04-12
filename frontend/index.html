@@ -293,60 +293,35 @@
                 </div>
             </div>
         </div>
-        <!-- 포트폴리오 베타 -->
-        <div class="col-6 col-md-6 col-xl">
-            <div class="summary-card p-4 h-100 bg-white">
-                <div class="d-flex align-items-start gap-3">
-                    <div class="icon-badge" style="background:rgba(168,85,247,.12);color:#a855f7;"><i class="bi bi-activity fs-5"></i></div>
-                    <div>
-                        <div class="text-muted" style="font-size:.75rem;font-weight:600;">포트폴리오 베타</div>
-                        <div id="card-beta" class="fw-bold fs-4 mt-1">계산 중...</div>
-                        <div class="text-muted" style="font-size:.7rem;">BTC 시장 대비</div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- ② 수익률 분석 -->
     <div class="row g-3 mb-4">
-        <!-- 기간별 수익률 + 리스크 지표 -->
+        <!-- 기간별 수익률 -->
         <div class="col-12 col-lg-5">
             <div class="section-card bg-white p-4 h-100">
                 <div id="returns">
                     <div class="section-title">수익률 분석</div>
                     <!-- 기간별 수익률 -->
-                    <div class="d-flex flex-wrap gap-2 mb-4" id="period-returns-row">
+                    <div class="d-flex flex-nowrap justify-content-between mb-4" id="period-returns-row">
                         <span class="text-muted" style="font-size:.8rem;">데이터 로딩 중...</span>
                     </div>
                 </div>
-                <div id="risk">
-                    <div class="section-title">리스크 지표</div>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <div class="p-3 rounded-3" style="background:#f8fafc;">
-                                <div class="text-muted" style="font-size:.72rem;font-weight:600;">최대 낙폭 (MDD)</div>
-                                <div id="risk-mdd" class="fw-bold fs-5 mt-1 text-down">—</div>
+                <div class="section-title">시장 지표</div>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="p-3 rounded-3" style="background:#f8fafc;">
+                            <div class="text-muted" style="font-size:.72rem;font-weight:600;">공포탐욕지수</div>
+                            <div class="d-flex align-items-baseline gap-2">
+                                <div id="card-fng" class="fw-bold fs-5 mt-1">—</div>
+                                <div id="card-fng-label" class="text-muted" style="font-size:.7rem;"></div>
                             </div>
                         </div>
-                        <div class="col-6">
-                            <div class="p-3 rounded-3" style="background:#f8fafc;">
-                                <div class="text-muted" style="font-size:.72rem;font-weight:600;">변동성 (연환산)</div>
-                                <div id="risk-vol" class="fw-bold fs-5 mt-1">—</div>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="p-3 rounded-3" style="background:#f8fafc;">
-                                <div class="text-muted" style="font-size:.72rem;font-weight:600;">샤프 지수</div>
-                                <div id="risk-sharpe" class="fw-bold fs-5 mt-1">—</div>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="p-3 rounded-3" style="background:#f8fafc;">
-                                <div class="text-muted" style="font-size:.72rem;font-weight:600;">HHI (집중도)</div>
-                                <div id="risk-hhi" class="fw-bold fs-5 mt-1">—</div>
-                                <div class="hhi-bar mt-1"><div id="hhi-fill" class="hhi-fill"></div></div>
-                            </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 rounded-3" style="background:#f8fafc;">
+                            <div class="text-muted" style="font-size:.72rem;font-weight:600;">USD/KRW</div>
+                            <div id="card-usdkrw" class="fw-bold fs-5 mt-1">—</div>
                         </div>
                     </div>
                 </div>
@@ -482,6 +457,7 @@ function logout() {
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 const KRW = v => new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(v);
+const USD = v => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 const PCT  = (v, digits=2) => v == null ? '—' : `${v >= 0 ? '+' : ''}${(v*100).toFixed(digits)}%`;
 const NUM  = (v, d=4) => v == null ? '—' : v.toLocaleString('ko-KR', {maximumFractionDigits: d});
 
@@ -629,41 +605,6 @@ function renderPeriodReturns(pr) {
     }
 }
 
-function renderRiskMetrics(risk) {
-    const mdd = risk.mdd;
-    const mddEl = document.getElementById('risk-mdd');
-    mddEl.setAttribute('data-flash', 'risk-mdd');
-    mddEl.textContent = mdd != null ? PCT(mdd, 2) : '데이터 부족';
-    mddEl.className = `fw-bold fs-5 mt-1 ${mdd != null ? 'text-down' : 'text-muted'}`;
-
-    const vol = risk.volatility;
-    const volEl = document.getElementById('risk-vol');
-    volEl.setAttribute('data-flash', 'risk-vol');
-    volEl.textContent = vol != null ? PCT(vol, 2) : '데이터 부족';
-    volEl.className = `fw-bold fs-5 mt-1 ${vol != null ? '' : 'text-muted'}`;
-
-    const sharpe = risk.sharpe;
-    const sharpeEl = document.getElementById('risk-sharpe');
-    sharpeEl.setAttribute('data-flash', 'risk-sharpe');
-    if (sharpe != null) {
-        sharpeEl.textContent = sharpe.toFixed(2);
-        sharpeEl.className = `fw-bold fs-5 mt-1 ${sharpe >= 1 ? 'text-up' : sharpe >= 0 ? '' : 'text-down'}`;
-    } else {
-        sharpeEl.textContent = '데이터 부족';
-        sharpeEl.className = 'fw-bold fs-5 mt-1 text-muted';
-    }
-
-    const hhi = risk.hhi;
-    const hhiEl = document.getElementById('risk-hhi');
-    hhiEl.setAttribute('data-flash', 'risk-hhi');
-    hhiEl.textContent = hhi != null ? Math.round(hhi).toLocaleString() : '—';
-    const hhiPct = Math.min((hhi / 10000) * 100, 100);
-    const hhiColor = hhi > 2500 ? '#dc2626' : hhi > 1500 ? '#f59e0b' : '#16a34a';
-    const hhiFill = document.getElementById('hhi-fill');
-    hhiFill.style.width = `${hhiPct}%`;
-    hhiFill.style.background = hhiColor;
-    hhiEl.style.color = hhiColor;
-}
 
 // ── Holdings table with sort ──────────────────────────────────────────────────
 let holdingsSortKey = 'total_value';
@@ -721,8 +662,8 @@ function renderHoldingsTable(assets) {
                 <div class="fw-semibold">${a.name}${a.asset_type === 'stock' ? ' <span class="badge bg-primary-subtle text-primary" style="font-size:.6rem;">US</span>' : ''}</div>
                 <div class="text-muted" style="font-size:.72rem;">${a.ticker}</div>
             </td>
-            <td class="num">${KRW(a.avg_price)}</td>
-            <td class="num" data-flash="${tk}:price">${KRW(a.current_price)}</td>
+            <td class="num">${a.avg_price_usd ? USD(a.avg_price_usd) : KRW(a.avg_price)}</td>
+            <td class="num" data-flash="${tk}:price">${a.current_price_usd ? USD(a.current_price_usd) : KRW(a.current_price)}</td>
             <td class="num">${NUM(a.quantity)}</td>
             <td class="num">${KRW(purchase)}</td>
             <td class="num fw-semibold" data-flash="${tk}:value">${KRW(a.total_value)}</td>
@@ -1007,23 +948,34 @@ function corrColor(val) {
     return `rgba(59,130,246,${(abs * 0.5).toFixed(2)})`;
 }
 
-async function loadBeta() {
+
+async function loadMarketIndicators() {
     try {
-        const data = await apiFetch('/api/analytics/beta');
-        const betaEl = document.getElementById('card-beta');
-        betaEl.setAttribute('data-flash', 'beta');
-        if (data.beta != null) {
-            betaEl.textContent = data.beta.toFixed(2);
-            betaEl.className = 'fw-bold fs-4 mt-1';
+        const data = await apiFetch('/api/analytics/market');
+        // 공포탐욕지수
+        const fngEl = document.getElementById('card-fng');
+        const fngLabel = document.getElementById('card-fng-label');
+        if (data.fear_greed) {
+            const v = data.fear_greed.value;
+            fngEl.textContent = v;
+            fngLabel.textContent = data.fear_greed.label;
+            let color;
+            if (v <= 25)      { color = '#dc2626'; }
+            else if (v <= 45) { color = '#f59e0b'; }
+            else if (v <= 55) { color = '#6b7280'; }
+            else if (v <= 75) { color = '#84cc16'; }
+            else              { color = '#16a34a'; }
+            fngEl.style.color = color;
         } else {
-            betaEl.textContent = '데이터 부족';
-            betaEl.className = 'fw-bold fs-4 mt-1 text-muted';
+            fngEl.textContent = '—';
+        }
+        // USD/KRW
+        const krwEl = document.getElementById('card-usdkrw');
+        if (data.usd_krw) {
+            krwEl.textContent = '₩' + data.usd_krw.toLocaleString('ko-KR');
         }
     } catch (e) {
-        const betaEl = document.getElementById('card-beta');
-        betaEl.setAttribute('data-flash', 'beta');
-        betaEl.textContent = '오류';
-        betaEl.className = 'fw-bold fs-4 mt-1 text-muted';
+        console.error('market indicators error:', e);
     }
 }
 
@@ -1082,7 +1034,6 @@ async function loadDashboard() {
         renderSummaryCards(portfolio, analytics);
         renderSidebarAssets(portfolio.assets);
         renderPeriodReturns(analytics.period_returns);
-        renderRiskMetrics(analytics.risk_metrics);
         renderHoldingsTable(portfolio.assets);
         if (portfolio.assets.length > 0) {
             renderAllocationChart(portfolio.assets);
@@ -1100,8 +1051,7 @@ async function loadDashboard() {
         document.getElementById('skeleton-overlay').classList.add('d-none');
         document.getElementById('main-content').classList.remove('d-none');
 
-        // 베타는 느리므로 비동기 로드
-        loadBeta();
+        loadMarketIndicators();  // 비동기 — 공포탐욕, 환율
         loadEarningsCalendar();  // 비동기 — 메인 로딩 블로킹 안함
         applyFlash(flashSnap);
     } catch (e) {
