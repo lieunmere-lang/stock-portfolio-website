@@ -295,6 +295,25 @@
         </div>
     </div>
 
+    <!-- 뉴스 리포트 미리보기 -->
+    <div id="news-preview" class="section-card bg-white p-4 mb-4 d-none">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="d-flex align-items-center gap-2">
+                <div class="icon-badge" style="background:rgba(99,102,241,.12);color:#6366f1;">
+                    <i class="bi bi-newspaper fs-5"></i>
+                </div>
+                <div>
+                    <div class="text-muted" style="font-size:.72rem;font-weight:600;">오늘의 모닝 리포트</div>
+                    <div id="news-preview-date" class="fw-semibold" style="font-size:.85rem;">—</div>
+                </div>
+            </div>
+            <a href="/news.html" class="btn btn-sm btn-outline-primary">자세히 보기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+        <p id="news-preview-summary" class="mb-2" style="font-size:.85rem;color:#475569;line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"></p>
+        <div id="news-preview-items" class="mb-2"></div>
+        <div id="news-preview-meta" class="text-muted" style="font-size:.72rem;"></div>
+    </div>
+
     <!-- ② 수익률 분석 -->
     <div class="row g-3 mb-4">
         <!-- 기간별 수익률 -->
@@ -1010,6 +1029,50 @@ async function loadEarningsCalendar() {
     }
 }
 
+// ── 뉴스 리포트 미리보기 ────────────────────────────────────────────────────
+async function loadNewsPreview() {
+    try {
+        const report = await apiFetch('/api/news/latest');
+        if (!report || !report.report_date) return;
+
+        const card = document.getElementById('news-preview');
+        card.classList.remove('d-none');
+
+        document.getElementById('news-preview-date').textContent = report.report_date;
+        document.getElementById('news-preview-summary').textContent = report.summary || '';
+
+        // 중요도 상위 3개 뉴스
+        const topItems = (report.items || [])
+            .sort((a, b) => (b.importance || 0) - (a.importance || 0))
+            .slice(0, 3);
+
+        const itemsHtml = topItems.map(item => {
+            const dots = Array.from({length: 5}, (_, i) =>
+                `<span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${i < item.importance ? '#f59e0b' : '#e2e8f0'};"></span>`
+            ).join('');
+            const ticker = item.related_ticker
+                ? `<span style="font-size:.7rem;font-weight:600;padding:.1rem .35rem;border-radius:4px;background:rgba(22,163,74,.1);color:#16a34a;">${escapeHtml(item.related_ticker)}</span>`
+                : '';
+            return `<div class="d-flex align-items-center gap-2 mb-1" style="font-size:.82rem;">
+                <span class="d-flex gap-1">${dots}</span>
+                <span style="color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(item.title)}</span>
+                ${ticker}
+            </div>`;
+        }).join('');
+        document.getElementById('news-preview-items').innerHTML = itemsHtml;
+
+        document.getElementById('news-preview-meta').textContent =
+            `수집 ${report.total_collected}건 → 선별 ${report.total_selected}건`;
+    } catch (e) {
+        console.error('news preview error:', e);
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 // ── Main load ─────────────────────────────────────────────────────────────────
 async function loadDashboard() {
     try {
@@ -1053,6 +1116,7 @@ async function loadDashboard() {
 
         loadMarketIndicators();  // 비동기 — 공포탐욕, 환율
         loadEarningsCalendar();  // 비동기 — 메인 로딩 블로킹 안함
+        loadNewsPreview();       // 비동기 — 뉴스 리포트 미리보기
         applyFlash(flashSnap);
     } catch (e) {
         if (e.message === 'Unauthenticated' || e.message === 'Unauthorized') return;
