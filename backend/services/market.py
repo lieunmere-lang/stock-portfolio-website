@@ -294,14 +294,16 @@ def _fetch_coin_heatmap(period: str) -> List[Dict]:
 def _fetch_commodity_heatmap(period: str) -> List[Dict]:
     """금, 은, WTI 원자재 히트맵 데이터 수집."""
     yf_period = _period_to_yf(period)
+    # 시장 규모 (USD): 글로벌 시장 총 규모 추정치
+    # 금: ~$16T (지상 금 총량), 은: ~$1.4T, WTI 원유: ~$1.7T
     commodities = [
-        ("GC=F", "금", "GOLD"),
-        ("SI=F", "은", "SILVER"),
-        ("CL=F", "WTI", "WTI"),
+        ("GC=F", "금", "GOLD", 16_000_000_000_000),
+        ("SI=F", "은", "SILVER", 1_400_000_000_000),
+        ("CL=F", "WTI", "WTI", 1_700_000_000_000),
     ]
 
     result = []
-    for yf_ticker, name, display_ticker in commodities:
+    for yf_ticker, name, display_ticker, market_size in commodities:
         try:
             hist = yf.Ticker(yf_ticker).history(period=yf_period)
             if hist is None or hist.empty:
@@ -326,6 +328,7 @@ def _fetch_commodity_heatmap(period: str) -> List[Dict]:
             result.append({
                 "ticker": display_ticker,
                 "name": name,
+                "market_cap": market_size,
                 "change_pct": round(change_pct, 2),
             })
         except Exception as e:

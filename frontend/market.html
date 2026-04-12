@@ -349,8 +349,13 @@ async function loadHeatmap(period) {
         });
     }
 
-    // Commodities — 시가총액이 없으므로 제외하고 별도 표시
-    // (원자재는 트리맵 아래에 독립 카드로 표시)
+    // Commodities — 글로벌 시장 규모로 표시
+    if (data.commodities && data.commodities.length > 0) {
+        hierarchyData.children.push({
+            name: 'Commodities',
+            children: data.commodities.map(c => ({ name: c.ticker, fullName: c.name, market_cap: c.market_cap || 1, change_pct: c.change_pct }))
+        });
+    }
 
     const width  = container.clientWidth;
     const height = container.clientHeight;
