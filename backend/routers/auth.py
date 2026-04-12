@@ -1,5 +1,6 @@
+import logging
 import os
-import secrets
+import secrets as _secrets
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
@@ -7,13 +8,20 @@ from fastapi import APIRouter, HTTPException, status
 from jose import jwt
 from pydantic import BaseModel
 
+logger = logging.getLogger(__name__)
+
 load_dotenv()
 
 APP_USERNAME = os.getenv("APP_USERNAME", "portfolio")
 APP_PASSWORD = os.getenv("APP_PASSWORD", "portfolio")
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "change-me-in-production")
+
+_default_jwt_secret = _secrets.token_hex(32)
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", _default_jwt_secret)
+if not os.getenv("JWT_SECRET_KEY"):
+    logger.warning("JWT_SECRET_KEY not set — using random key (tokens won't survive restart)")
+
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_DAYS = 30
+ACCESS_TOKEN_EXPIRE_DAYS = 7
 
 router = APIRouter(prefix="/auth")
 
@@ -50,8 +58,8 @@ def verify_token(token: str) -> str:
 @router.post("/token", response_model=TokenResponse)
 def login(body: LoginRequest):
     valid = (
-        secrets.compare_digest(body.username, APP_USERNAME)
-        and secrets.compare_digest(body.password, APP_PASSWORD)
+        _secrets.compare_digest(body.username, APP_USERNAME)
+        and _secrets.compare_digest(body.password, APP_PASSWORD)
     )
     if not valid:
         raise HTTPException(
