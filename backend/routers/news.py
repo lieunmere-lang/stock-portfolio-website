@@ -295,6 +295,16 @@ def get_report_by_date(report_date: str, user: str = Depends(require_auth)):
 
 
 @router.get("/reports")
-def list_reports(user: str = Depends(require_auth)):
-    """뉴스 리포트 목록 조회"""
-    return MOCK_REPORTS_LIST
+def list_reports(
+    offset: int = 0,
+    limit: int = 10,
+    user: str = Depends(require_auth),
+):
+    """뉴스 리포트 목록 조회 (페이지네이션)"""
+    total = len(MOCK_REPORTS_LIST)
+    items = MOCK_REPORTS_LIST[offset : offset + limit]
+    return {
+        "items": items,
+        "total": total,
+        "has_more": offset + limit < total,
+    }
