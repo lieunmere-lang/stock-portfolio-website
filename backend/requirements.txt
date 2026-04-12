@@ -9,3 +9,4 @@ python-jose[cryptography]
 yfinance
 feedparser
 httpx
+anthropic
