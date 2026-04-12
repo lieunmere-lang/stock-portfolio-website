@@ -147,6 +147,29 @@
         }
         .date-nav .btn { font-size: .85rem; }
         .report-date-title { font-size: 1.25rem; font-weight: 700; }
+
+        /* === List view === */
+        .view-toggle .btn { font-size: .82rem; padding: .3rem .75rem; }
+        .view-toggle .btn.active { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+        .report-list-item {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            transition: background .15s;
+        }
+        .report-list-item:last-child { border-bottom: none; }
+        .report-list-item:hover { background: #f8fafc; }
+        .report-list-date { font-weight: 700; font-size: .95rem; color: #1e293b; }
+        .report-list-meta { font-size: .72rem; color: #94a3b8; }
+        .report-list-preview {
+            font-size: .85rem; color: #475569;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            max-width: 100%;
+        }
+        #btn-load-more {
+            display: block; margin: 1rem auto;
+            font-size: .85rem;
+        }
     </style>
 </head>
 <body class="has-sidebar">
@@ -211,15 +234,20 @@
     <!-- 오류 배너 -->
     <div id="error-banner" class="alert alert-danger d-none mb-3" style="font-size:.85rem;"></div>
 
-    <!-- 헤더 + 날짜 네비게이션 -->
+    <!-- 헤더 + 뷰 토글 + 날짜 네비게이션 -->
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <div>
+        <div class="d-flex align-items-center gap-3">
             <h1 class="report-date-title mb-0">
                 <i class="bi bi-newspaper text-primary"></i>
-                모닝 리포트 — <span id="report-date">—</span>
+                <span id="header-report">모닝 리포트 — <span id="report-date">—</span></span>
+                <span id="header-list" class="d-none">뉴스 리포트</span>
             </h1>
+            <div class="view-toggle btn-group btn-group-sm">
+                <button id="btn-view-report" class="btn btn-outline-secondary active">리포트</button>
+                <button id="btn-view-list" class="btn btn-outline-secondary">목록</button>
+            </div>
         </div>
-        <div class="date-nav d-flex align-items-center gap-2">
+        <div id="date-nav" class="date-nav d-flex align-items-center gap-2">
             <button id="btn-prev" class="btn btn-sm btn-outline-secondary" disabled>
                 <i class="bi bi-chevron-left"></i> 이전
             </button>
@@ -249,6 +277,12 @@
 
     <!-- 뉴스 섹션들 -->
     <div id="news-sections"></div>
+
+    <!-- 리스트 뷰 -->
+    <div id="list-view" class="d-none">
+        <div id="report-list" class="section-card bg-white"></div>
+        <button id="btn-load-more" class="btn btn-sm btn-outline-secondary d-none">더보기</button>
+    </div>
 
     <!-- 빈 상태 -->
     <div id="empty-state" class="text-center py-5 d-none">
@@ -422,6 +456,69 @@ function escapeHtml(str) {
 // ── State ────────────────────────────────────────────────────────────────────
 let reportsList = [];
 let currentReportIndex = -1;
+let currentView = 'report'; // 'report' | 'list'
+let listOffset = 0;
+const LIST_LIMIT = 10;
+let listHasMore = false;
+
+// ── View toggle ─────────────────────────────────────────────────────────────
+function switchView(view) {
+    currentView = view;
+    const isReport = view === 'report';
+
+    // Toggle active button
+    document.getElementById('btn-view-report').classList.toggle('active', isReport);
+    document.getElementById('btn-view-list').classList.toggle('active', !isReport);
+
+    // Toggle header text
+    document.getElementById('header-report').classList.toggle('d-none', !isReport);
+    document.getElementById('header-list').classList.toggle('d-none', isReport);
+
+    // Toggle sections
+    document.getElementById('summary-card').classList.toggle('d-none', !isReport);
+    document.getElementById('indicators-row').classList.toggle('d-none', !isReport);
+    document.getElementById('news-sections').classList.toggle('d-none', !isReport);
+    document.getElementById('date-nav').classList.toggle('d-none', !isReport);
+    document.getElementById('list-view').classList.toggle('d-none', isReport);
+    document.getElementById('empty-state').classList.add('d-none');
+
+    if (!isReport) {
+        listOffset = 0;
+        document.getElementById('report-list').innerHTML = '';
+        loadReportList();
+    }
+}
+
+// ── List view ───────────────────────────────────────────────────────────────
+async function loadReportList() {
+    try {
+        const data = await apiFetch(`/api/news/reports?offset=${listOffset}&limit=${LIST_LIMIT}`);
+        const container = document.getElementById('report-list');
+
+        (data.items || []).forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'report-list-item';
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="report-list-date">${escapeHtml(item.report_date)}</span>
+                    <span class="report-list-meta">수집 ${item.total_collected}건 → 선별 ${item.total_selected}건 · ${escapeHtml(item.model_used || '')}</span>
+                </div>
+                <div class="report-list-preview">${escapeHtml(item.summary_preview || '')}</div>
+            `;
+            div.addEventListener('click', () => {
+                switchView('report');
+                loadReport(item.report_date);
+            });
+            container.appendChild(div);
+        });
+
+        listOffset += (data.items || []).length;
+        listHasMore = data.has_more;
+        document.getElementById('btn-load-more').classList.toggle('d-none', !listHasMore);
+    } catch (e) {
+        console.error('load report list error:', e);
+    }
+}
 
 // ── Main load + navigation ───────────────────────────────────────────────────
 async function loadReport(dateStr) {
@@ -486,7 +583,8 @@ function renderReport(report) {
 
 async function loadReportsList() {
     try {
-        reportsList = await apiFetch('/api/news/reports');
+        const data = await apiFetch('/api/news/reports?offset=0&limit=100');
+        reportsList = data.items || data;
     } catch(e) {
         console.error('load reports list error:', e);
         reportsList = [];
@@ -529,6 +627,9 @@ function navigateNext() {
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btn-prev').addEventListener('click', navigatePrev);
     document.getElementById('btn-next').addEventListener('click', navigateNext);
+    document.getElementById('btn-view-report').addEventListener('click', () => switchView('report'));
+    document.getElementById('btn-view-list').addEventListener('click', () => switchView('list'));
+    document.getElementById('btn-load-more').addEventListener('click', loadReportList);
 
     await Promise.all([
         loadReport(),
