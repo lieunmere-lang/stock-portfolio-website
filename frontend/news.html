@@ -288,6 +288,10 @@
     <div id="empty-state" class="text-center py-5 d-none">
         <i class="bi bi-newspaper text-muted" style="font-size:3rem;"></i>
         <p class="text-muted mt-3" style="font-size:.95rem;">아직 생성된 리포트가 없습니다</p>
+        <button id="btn-generate" class="btn btn-primary btn-sm mt-2" onclick="generateReport()">
+            <i class="bi bi-magic"></i> 리포트 생성
+        </button>
+        <div id="generate-status" class="text-muted mt-2 d-none" style="font-size:.82rem;"></div>
     </div>
 
 </div>
@@ -460,6 +464,40 @@ let currentView = 'report'; // 'report' | 'list'
 let listOffset = 0;
 const LIST_LIMIT = 10;
 let listHasMore = false;
+
+// ── Manual report generation ────────────────────────────────────────────────
+async function generateReport() {
+    const btn = document.getElementById('btn-generate');
+    const status = document.getElementById('generate-status');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>생성 중...';
+    status.classList.remove('d-none');
+    status.textContent = '뉴스 수집 및 분석 중입니다. 1~2분 소요됩니다...';
+
+    try {
+        const headers = getAuthHeaders();
+        if (!headers) return;
+        const res = await fetch('/api/news/generate', { method: 'POST', headers });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        status.textContent = '리포트가 생성되었습니다!';
+        status.classList.remove('text-muted');
+        status.classList.add('text-success');
+        setTimeout(() => {
+            document.getElementById('empty-state').classList.add('d-none');
+            loadReport();
+            loadReportsList();
+        }, 1000);
+    } catch (e) {
+        status.textContent = '생성 실패: ' + e.message;
+        status.classList.remove('text-muted');
+        status.classList.add('text-danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-magic"></i> 리포트 생성';
+    }
+}
 
 // ── View toggle ─────────────────────────────────────────────────────────────
 function switchView(view) {
