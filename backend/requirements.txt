@@ -7,3 +7,5 @@ pyjwt
 sqlalchemy
 python-jose[cryptography]
 yfinance
+feedparser
+httpx
