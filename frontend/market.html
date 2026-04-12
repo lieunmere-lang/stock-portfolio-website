@@ -245,6 +245,14 @@
         </div>
     </div>
 
+    <!-- Commodities section -->
+    <div class="mb-4">
+        <div class="section-title">원자재</div>
+        <div class="row g-3" id="commodities-grid">
+            <!-- cards injected by JS -->
+        </div>
+    </div>
+
     <!-- Indicator widgets section -->
     <div class="mb-2">
         <div class="section-title">시장 지표</div>
@@ -316,20 +324,14 @@ async function loadHeatmap(period) {
 
     loadingEl.style.display = 'none';
 
+    // Render commodities cards
+    renderCommodities(data.commodities || []);
+
     // Transform flat API response into D3 hierarchy
-    // 주식은 실제 시가총액 비례, 코인/원자재는 최소 표시 비율 보장
+    // 모든 자산을 실제 달러 시가총액 기준으로 표시
     const hierarchyData = { name: 'Market', children: [] };
 
-    // 주식 총 시가총액 계산
-    const totalStockMcap = (data.stocks || []).reduce((s, x) => s + (x.market_cap || 0), 0);
-
-    // 최소 비율 보장: 코인 15%, 원자재 5% (주식이 나머지)
-    const MIN_CRYPTO_RATIO = 0.15;
-    const MIN_COMMODITY_RATIO = 0.05;
-    const stockRatio = 1 - MIN_CRYPTO_RATIO - MIN_COMMODITY_RATIO;
-    const totalBudget = totalStockMcap / stockRatio;  // 주식이 80%가 되는 전체 예산
-
-    // Group stocks by GICS sector — 실제 시가총액 사용
+    // Group stocks by GICS sector
     const sectorMap = {};
     (data.stocks || []).forEach(s => {
         if (!sectorMap[s.sector]) sectorMap[s.sector] = [];
@@ -339,33 +341,16 @@ async function loadHeatmap(period) {
         hierarchyData.children.push({ name: sector, children: stocks });
     });
 
-    // Coins — 코인 내에서는 실제 시가총액 비례, 전체에서 최소 15% 보장
+    // Coins — 실제 시가총액
     if (data.coins && data.coins.length > 0) {
-        const cryptoBudget = totalBudget * MIN_CRYPTO_RATIO;
-        const totalCoinMcap = data.coins.reduce((s, c) => s + (c.market_cap || 1), 0);
         hierarchyData.children.push({
             name: 'Crypto',
-            children: data.coins.map(c => ({
-                name: c.ticker, fullName: c.name,
-                market_cap: (c.market_cap || 1) / totalCoinMcap * cryptoBudget,
-                change_pct: c.change_pct
-            }))
+            children: data.coins.map(c => ({ name: c.ticker, fullName: c.name, market_cap: c.market_cap || 1, change_pct: c.change_pct }))
         });
     }
 
-    // Commodities — 균등 크기, 전체에서 최소 5% 보장
-    if (data.commodities && data.commodities.length > 0) {
-        const commodityBudget = totalBudget * MIN_COMMODITY_RATIO;
-        const perItem = commodityBudget / data.commodities.length;
-        hierarchyData.children.push({
-            name: 'Commodities',
-            children: data.commodities.map(c => ({
-                name: c.ticker, fullName: c.name,
-                market_cap: perItem,
-                change_pct: c.change_pct
-            }))
-        });
-    }
+    // Commodities — 시가총액이 없으므로 제외하고 별도 표시
+    // (원자재는 트리맵 아래에 독립 카드로 표시)
 
     const width  = container.clientWidth;
     const height = container.clientHeight;
@@ -534,6 +519,32 @@ async function loadHeatmap(period) {
             if (w < 150) return name.slice(0, 12) + (name.length > 12 ? '…' : '');
             return name;
         });
+}
+
+// ── Commodities cards ─────────────────────────────────────────────────────────
+function renderCommodities(commodities) {
+    const grid = document.getElementById('commodities-grid');
+    grid.innerHTML = '';
+    if (!commodities.length) { grid.closest('.mb-4').style.display = 'none'; return; }
+    grid.closest('.mb-4').style.display = '';
+
+    commodities.forEach(c => {
+        const pct = c.change_pct;
+        const pctColor = pct > 0 ? 'var(--color-up)' : pct < 0 ? 'var(--color-down)' : 'var(--color-neutral)';
+        const arrow = pct > 0 ? '▲' : pct < 0 ? '▼' : '—';
+        const bgColor = heatColor(pct);
+
+        const col = document.createElement('div');
+        col.className = 'col-4';
+        col.innerHTML = `
+            <div class="indicator-card" style="border-left: 4px solid ${bgColor};">
+                <div class="indicator-label">${c.name} (${c.ticker})</div>
+                <div class="indicator-change" style="color:${pctColor}; font-size:1.1rem;">
+                    ${arrow} ${Math.abs(pct).toFixed(2)}%
+                </div>
+            </div>`;
+        grid.appendChild(col);
+    });
 }
 
 // ── Period tabs ───────────────────────────────────────────────────────────────
