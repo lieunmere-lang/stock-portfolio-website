@@ -4,7 +4,9 @@ from typing import Any, Dict, List
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from database import AssetSnapshot, ManualAsset, PortfolioSnapshot, Session, StockHolding, engine
+import asyncio
+
+from database import AssetSnapshot, ManualAsset, NewsReport, NewsReportItem, PortfolioSnapshot, RawNews, Session, StockHolding, engine
 from services.upbit import STAKING_MAP, fetch_upbit_assets, fetch_upbit_candles
 from services.stock import get_usd_krw
 
@@ -357,6 +359,106 @@ def sync_portfolio() -> None:
         backfill_historical_snapshots(asset_rows)
 
 
+def generate_news_report() -> dict:
+    """뉴스를 수집하고 Claude API로 분석하여 리포트를 생성·저장한다."""
+    print(f"[{datetime.now().isoformat()}] Generating news report...")
+
+    # 수집기 등록 (import 시 @register 실행)
+    import services.collectors.coindesk
+    import services.collectors.cointelegraph
+    import services.collectors.yahoo_finance
+    import services.collectors.coingecko
+    import services.collectors.sec_edgar
+    import services.collectors.fear_greed
+
+    from services.collectors import collect_all
+    from services.news_analyzer import analyze_news
+
+    # 1. 뉴스 수집
+    try:
+        raw_items = asyncio.run(collect_all())
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        raw_items = loop.run_until_complete(collect_all())
+        loop.close()
+
+    print(f"[NewsReport] Collected {len(raw_items)} raw items")
+
+    # 2. 원시 뉴스 DB 저장
+    with Session(engine) as session:
+        for item in raw_items:
+            session.add(RawNews(
+                source=item.source,
+                title=item.title,
+                content=item.content,
+                url=item.url,
+                published_at=item.published_at,
+            ))
+        session.commit()
+
+    # 3. 보유 종목 조회
+    holdings = []
+    with Session(engine) as session:
+        for h in session.query(StockHolding).filter(StockHolding.is_active == True).all():
+            holdings.append({"ticker": h.ticker, "name": h.name, "profit_loss_rate": 0.0})
+        for m in session.query(ManualAsset).filter(ManualAsset.is_active == True).all():
+            holdings.append({"ticker": m.ticker, "name": m.name, "profit_loss_rate": 0.0})
+
+    # 캐시에서 수익률 가져오기
+    cached = _portfolio_cache.get("assets", [])
+    rate_map = {a["ticker"]: a.get("profit_loss_rate", 0) for a in cached}
+    for h in holdings:
+        h["profit_loss_rate"] = rate_map.get(h["ticker"], 0.0)
+
+    # 4. Claude 분석
+    try:
+        report_data = asyncio.run(analyze_news(raw_items, holdings))
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        report_data = loop.run_until_complete(analyze_news(raw_items, holdings))
+        loop.close()
+
+    if not report_data.get("items"):
+        print("[NewsReport] Analysis returned empty report")
+        return report_data
+
+    # 5. DB 저장 (오늘 날짜 리포트가 있으면 덮어쓰기)
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    with Session(engine) as session:
+        existing = session.query(NewsReport).filter(NewsReport.report_date == today).first()
+        if existing:
+            session.delete(existing)
+            session.commit()
+
+        report = NewsReport(
+            report_date=today,
+            summary=report_data.get("summary", ""),
+            model_used=report_data.get("model_used", ""),
+            total_collected=len(raw_items),
+            total_selected=len(report_data.get("items", [])),
+        )
+        session.add(report)
+        session.flush()
+
+        for item_data in report_data.get("items", []):
+            session.add(NewsReportItem(
+                report_id=report.id,
+                category=item_data.get("category"),
+                title=item_data.get("title"),
+                summary=item_data.get("summary"),
+                impact_analysis=item_data.get("impact_analysis"),
+                related_ticker=item_data.get("related_ticker"),
+                source=item_data.get("source"),
+                source_url=item_data.get("source_url"),
+                importance=item_data.get("importance"),
+            ))
+        session.commit()
+
+    print(f"[NewsReport] Report saved: {today}, {len(report_data.get('items', []))} items")
+    return report_data
+
+
 def start_scheduler():
     # 서버 시작 즉시 1회 실행 후, 이후 1분 간격으로 반복
     scheduler.add_job(
@@ -365,6 +467,14 @@ def start_scheduler():
         minutes=1,
         id="portfolio_sync",
         next_run_time=datetime.now(),
+    )
+    scheduler.add_job(
+        generate_news_report,
+        "cron",
+        hour=8,
+        minute=50,
+        timezone="Asia/Seoul",
+        id="news_report",
     )
     scheduler.start()
 
