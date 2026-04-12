@@ -462,6 +462,26 @@
         </div>
     </div>
 
+    <!-- ⑥ 환율 영향 분석 -->
+    <div id="fx-impact-section" class="section-card bg-white p-4 mb-4 d-none">
+        <div class="section-title">환율 영향 분석 <span class="text-muted fw-normal" style="font-size:.7rem;">(미국 주식)</span></div>
+        <div id="fx-summary" class="row g-2 mb-3"></div>
+        <div class="table-responsive">
+            <table class="table holdings-table mb-0">
+                <thead>
+                    <tr>
+                        <th>종목</th>
+                        <th class="num">USD 수익률</th>
+                        <th class="num">KRW 수익률</th>
+                        <th class="num">환율 영향</th>
+                        <th class="num">USD 손익</th>
+                    </tr>
+                </thead>
+                <tbody id="fx-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
 </main>
 </div>
 
@@ -966,11 +986,11 @@ async function renderCumulativeChart(days) {
 
 async function renderCorrelationMatrix() {
     const container = document.getElementById('corr-container');
-    container.innerHTML = '<p class="text-muted" style="font-size:.8rem;"><i class="bi bi-arrow-repeat"></i> CoinGecko에서 불러오는 중...</p>';
+    container.innerHTML = '<p class="text-muted" style="font-size:.8rem;"><i class="bi bi-arrow-repeat spin"></i> 상관관계 데이터 로딩 중...</p>';
     try {
         const data = await apiFetch('/api/analytics/correlation');
         if (!data.tickers || !data.tickers.length) {
-            container.innerHTML = '<p class="text-muted" style="font-size:.8rem;">데이터를 불러올 수 없습니다. (CoinGecko API 제한 또는 종목 미지원)</p>';
+            container.innerHTML = '<p class="text-muted" style="font-size:.8rem;">데이터를 불러올 수 없습니다. (API 제한 또는 종목 미지원)</p>';
             return;
         }
         const { tickers, matrix } = data;
@@ -979,13 +999,27 @@ async function renderCorrelationMatrix() {
         html += '</tr></thead><tbody>';
         matrix.forEach((row, i) => {
             html += `<tr><th>${tickers[i]}</th>`;
-            row.forEach(val => {
+            row.forEach((val, j) => {
                 const bg = corrColor(val);
-                html += `<td style="background:${bg};font-size:.7rem;">${val != null ? val.toFixed(2) : '—'}</td>`;
+                const textColor = (val != null && Math.abs(val) > 0.6) ? '#fff' : '#334155';
+                const isSelf = i === j;
+                html += `<td style="background:${bg};font-size:.72rem;color:${textColor};font-weight:${isSelf ? '700' : '500'};">${val != null ? val.toFixed(2) : '—'}</td>`;
             });
             html += '</tr>';
         });
         html += '</tbody></table></div>';
+        // 범례 추가
+        html += `<div class="d-flex align-items-center gap-3 mt-2" style="font-size:.7rem;color:#64748b;">
+            <span>강한 음의 상관</span>
+            <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;width:120px;">
+                <div style="flex:1;background:rgba(59,130,246,0.7);"></div>
+                <div style="flex:1;background:rgba(59,130,246,0.3);"></div>
+                <div style="flex:1;background:#f8fafc;"></div>
+                <div style="flex:1;background:rgba(220,38,38,0.3);"></div>
+                <div style="flex:1;background:rgba(220,38,38,0.7);"></div>
+            </div>
+            <span>강한 양의 상관</span>
+        </div>`;
         container.innerHTML = html;
     } catch (e) {
         container.innerHTML = '<p class="text-danger" style="font-size:.8rem;">불러오기 실패: ' + e.message + '</p>';
@@ -994,10 +1028,9 @@ async function renderCorrelationMatrix() {
 
 function corrColor(val) {
     if (val == null) return '#f8fafc';
-    // 1.0 → 짙은 빨강, 0 → 흰색, -1.0 → 짙은 파랑
     const abs = Math.abs(val);
-    if (val >= 0) return `rgba(220,38,38,${(abs * 0.5).toFixed(2)})`;
-    return `rgba(59,130,246,${(abs * 0.5).toFixed(2)})`;
+    if (val >= 0) return `rgba(220,38,38,${(abs * 0.7).toFixed(2)})`;
+    return `rgba(59,130,246,${(abs * 0.7).toFixed(2)})`;
 }
 
 
@@ -1029,6 +1062,72 @@ async function loadMarketIndicators() {
     } catch (e) {
         console.error('market indicators error:', e);
     }
+}
+
+async function loadFxImpact() {
+    try {
+        const data = await apiFetch('/api/analytics/fx-impact');
+        if (!data.items || !data.items.length) return;
+
+        const section = document.getElementById('fx-impact-section');
+        section.classList.remove('d-none');
+
+        // 요약 카드
+        if (data.summary) {
+            const s = data.summary;
+            const fxCls = s.fx_impact >= 0 ? 'text-up' : 'text-down';
+            document.getElementById('fx-summary').innerHTML = `
+                <div class="col-6 col-md-3">
+                    <div class="p-3 rounded-3" style="background:#f8fafc;">
+                        <div class="text-muted" style="font-size:.72rem;font-weight:600;">USD 수익률</div>
+                        <div class="fw-bold fs-6 mt-1 ${pnlClass2(s.total_usd_return)}">${s.total_usd_return >= 0 ? '+' : ''}${s.total_usd_return}%</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="p-3 rounded-3" style="background:#f8fafc;">
+                        <div class="text-muted" style="font-size:.72rem;font-weight:600;">KRW 수익률</div>
+                        <div class="fw-bold fs-6 mt-1 ${pnlClass2(s.total_krw_return)}">${s.total_krw_return >= 0 ? '+' : ''}${s.total_krw_return}%</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="p-3 rounded-3" style="background:#f8fafc;">
+                        <div class="text-muted" style="font-size:.72rem;font-weight:600;">환율 영향</div>
+                        <div class="fw-bold fs-6 mt-1 ${fxCls}">${s.fx_impact >= 0 ? '+' : ''}${s.fx_impact}%</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="p-3 rounded-3" style="background:#f8fafc;">
+                        <div class="text-muted" style="font-size:.72rem;font-weight:600;">현재 USD/KRW</div>
+                        <div class="fw-bold fs-6 mt-1">₩${s.usd_krw.toLocaleString('ko-KR')}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 종목별 테이블
+        const tbody = document.getElementById('fx-tbody');
+        tbody.innerHTML = data.items.map(item => {
+            const usdCls = pnlClass2(item.usd_return);
+            const krwCls = pnlClass2(item.krw_return);
+            const fxCls = pnlClass2(item.fx_impact);
+            const pnlCls = pnlClass2(item.pnl_usd);
+            return `<tr>
+                <td><span class="fw-semibold">${item.ticker}</span> <span class="text-muted" style="font-size:.72rem;">${item.name}</span></td>
+                <td class="num ${usdCls}">${item.usd_return >= 0 ? '+' : ''}${item.usd_return}%</td>
+                <td class="num ${krwCls}">${item.krw_return >= 0 ? '+' : ''}${item.krw_return}%</td>
+                <td class="num ${fxCls} fw-semibold">${item.fx_impact >= 0 ? '+' : ''}${item.fx_impact}%</td>
+                <td class="num ${pnlCls}">$${item.pnl_usd.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+            </tr>`;
+        }).join('');
+    } catch (e) {
+        console.error('fx impact error:', e);
+    }
+}
+
+function pnlClass2(v) {
+    if (v > 0) return 'text-up';
+    if (v < 0) return 'text-down';
+    return 'text-neutral';
 }
 
 async function loadEarningsCalendar() {
@@ -1150,6 +1249,7 @@ async function loadDashboard() {
         loadMarketIndicators();  // 비동기 — 공포탐욕, 환율
         loadEarningsCalendar();  // 비동기 — 메인 로딩 블로킹 안함
         loadNewsPreview();       // 비동기 — 뉴스 리포트 미리보기
+        loadFxImpact();          // 비동기 — 환율 영향 분석
         applyFlash(flashSnap);
     } catch (e) {
         if (e.message === 'Unauthenticated' || e.message === 'Unauthorized') return;

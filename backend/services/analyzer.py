@@ -322,16 +322,38 @@ def calculate_beta(assets: List, days: int = 30) -> Optional[float]:
     return cov / var_m
 
 
+def _fetch_stock_prices(ticker: str, days: int = 30) -> List[float]:
+    """yfinance로 주식 종가 가져오기."""
+    try:
+        import yfinance as yf
+        stock = yf.Ticker(ticker)
+        hist = stock.history(period=f"{days + 5}d")
+        if hist.empty:
+            return []
+        return hist["Close"].dropna().tolist()[-days:]
+    except Exception:
+        return []
+
+
 def calculate_correlation_matrix(assets: List, days: int = 30) -> Optional[Dict]:
-    """보유 코인 간 상관관계 매트릭스. {tickers: [...], matrix: [[...]]}"""
+    """보유 종목(코인+주식) 간 상관관계 매트릭스. {tickers: [...], matrix: [[...]]}"""
     tickers = []
     returns_map: Dict[str, List[float]] = {}
 
     for asset in assets:
-        cg_id = UPBIT_TO_COINGECKO.get(asset["ticker"])
-        if not cg_id:
-            continue
-        prices = _fetch_coingecko_prices(cg_id, days)
+        prices = []
+        asset_type = asset.get("asset_type", "crypto")
+
+        if asset_type == "stock":
+            # 주식: yfinance로 가져오기
+            prices = _fetch_stock_prices(asset["ticker"], days)
+        else:
+            # 암호화폐: CoinGecko로 가져오기
+            cg_id = UPBIT_TO_COINGECKO.get(asset["ticker"])
+            if not cg_id:
+                continue
+            prices = _fetch_coingecko_prices(cg_id, days)
+
         if not prices or len(prices) < 3:
             continue
         ret = [

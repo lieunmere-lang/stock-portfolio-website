@@ -1,4 +1,4 @@
-const CACHE_NAME = 'portfolio-v7';
+const CACHE_NAME = 'portfolio-v8';
 const STATIC_ASSETS = [
   '/',
   '/login.html',
