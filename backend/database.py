@@ -101,6 +101,20 @@ class ManualAsset(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
+class StockHolding(Base):
+    """미국 주식 보유 정보 (수동 등록)."""
+    __tablename__ = "stock_holdings"
+
+    id = Column(Integer, primary_key=True)
+    ticker = Column(String(20), nullable=False, unique=True)   # 예: AAPL
+    name = Column(String(100), nullable=False)                  # 예: Apple Inc.
+    quantity = Column(Float, nullable=False)
+    avg_price = Column(Float, nullable=False)                   # USD
+    first_purchase_date = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
     # 기존 DB에 새 컬럼 추가 (이미 존재하면 무시)
