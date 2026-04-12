@@ -372,6 +372,11 @@ def generate_news_report() -> dict:
     import services.collectors.fear_greed
     import services.collectors.google_news
     import services.collectors.investing_calendar
+    import services.collectors.alpha_vantage
+    import services.collectors.fred
+    import services.collectors.reuters
+    import services.collectors.bloomberg
+    import services.collectors.finviz
 
     from services.collectors import collect_all
     from services.news_analyzer import analyze_news
@@ -477,6 +482,23 @@ def start_scheduler():
         minute=50,
         timezone="Asia/Seoul",
         id="news_report",
+    )
+    # TODO: 테스트용 — 확인 후 제거
+    scheduler.add_job(
+        generate_news_report,
+        "cron",
+        hour=15,
+        minute=0,
+        timezone="Asia/Seoul",
+        id="news_report_test_1",
+    )
+    scheduler.add_job(
+        generate_news_report,
+        "cron",
+        hour=15,
+        minute=15,
+        timezone="Asia/Seoul",
+        id="news_report_test_2",
     )
     scheduler.start()
 
