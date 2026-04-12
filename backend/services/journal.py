@@ -238,12 +238,37 @@ def get_trade_summary(db: Session, ticker: Optional[str] = None) -> Dict[str, An
         s["sell_amount"] = round(s["sell_amount"])
         s["fee_total"] = round(s["fee_total"])
 
+    # 승률 및 성과 통계 계산
+    winners = [s for s in by_ticker.values() if s["realized_pnl"] > 0]
+    losers = [s for s in by_ticker.values() if s["realized_pnl"] < 0]
+    tickers_with_sells = [s for s in by_ticker.values() if s["sell_quantity"] > 0]
+    win_rate = len(winners) / len(tickers_with_sells) * 100 if tickers_with_sells else 0
+
+    # 종목별 실현 수익률 계산
+    for s in by_ticker.values():
+        if s["sell_quantity"] > 0 and s["buy_quantity"] > 0:
+            avg_buy = s["buy_amount"] / s["buy_quantity"]
+            cost_basis = avg_buy * s["sell_quantity"]
+            s["realized_return"] = round((s["sell_amount"] - cost_basis) / cost_basis * 100, 2) if cost_basis > 0 else 0
+        else:
+            s["realized_return"] = 0
+
+    realized_returns = [s["realized_return"] for s in tickers_with_sells]
+
     totals = {
         "buy_amount": sum(s["buy_amount"] for s in by_ticker.values()),
         "sell_amount": sum(s["sell_amount"] for s in by_ticker.values()),
         "fee_total": sum(s["fee_total"] for s in by_ticker.values()),
         "trade_count": sum(s["trade_count"] for s in by_ticker.values()),
         "realized_pnl": sum(s["realized_pnl"] for s in by_ticker.values()),
+        "win_rate": round(win_rate, 1),
+        "win_count": len(winners),
+        "loss_count": len(losers),
+        "avg_return": round(sum(realized_returns) / len(realized_returns), 2) if realized_returns else 0,
+        "best_return": round(max(realized_returns), 2) if realized_returns else 0,
+        "worst_return": round(min(realized_returns), 2) if realized_returns else 0,
+        "avg_win": round(sum(s["realized_pnl"] for s in winners) / len(winners)) if winners else 0,
+        "avg_loss": round(sum(s["realized_pnl"] for s in losers) / len(losers)) if losers else 0,
     }
 
     return {

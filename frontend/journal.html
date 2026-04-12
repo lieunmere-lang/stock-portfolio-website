@@ -244,6 +244,51 @@
         </div>
     </div>
 
+    <!-- 성과 통계 -->
+    <div id="perf-stats" class="section-card card mb-4 d-none">
+        <div class="card-body">
+            <div class="section-title">매매 성과 분석</div>
+            <div class="row g-2">
+                <div class="col-4 col-md-2">
+                    <div class="p-2 rounded-3 text-center" style="background:#f8fafc;">
+                        <div class="text-muted" style="font-size:.65rem;font-weight:600;">승률</div>
+                        <div class="fw-bold" id="perf-winrate" style="font-size:1.1rem;">—</div>
+                    </div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="p-2 rounded-3 text-center" style="background:#f8fafc;">
+                        <div class="text-muted" style="font-size:.65rem;font-weight:600;">승/패</div>
+                        <div class="fw-bold" id="perf-winloss" style="font-size:1.1rem;">—</div>
+                    </div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="p-2 rounded-3 text-center" style="background:#f8fafc;">
+                        <div class="text-muted" style="font-size:.65rem;font-weight:600;">평균 수익률</div>
+                        <div class="fw-bold" id="perf-avgret" style="font-size:1.1rem;">—</div>
+                    </div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="p-2 rounded-3 text-center" style="background:#f8fafc;">
+                        <div class="text-muted" style="font-size:.65rem;font-weight:600;">최대 수익</div>
+                        <div class="fw-bold text-up" id="perf-best" style="font-size:1.1rem;">—</div>
+                    </div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="p-2 rounded-3 text-center" style="background:#f8fafc;">
+                        <div class="text-muted" style="font-size:.65rem;font-weight:600;">최대 손실</div>
+                        <div class="fw-bold text-down" id="perf-worst" style="font-size:1.1rem;">—</div>
+                    </div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="p-2 rounded-3 text-center" style="background:#f8fafc;">
+                        <div class="text-muted" style="font-size:.65rem;font-weight:600;">평균 승/패 금액</div>
+                        <div class="fw-bold" id="perf-avgwl" style="font-size:.85rem;">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 종목별 요약 -->
     <div class="section-card card mb-4">
         <div class="card-body">
@@ -257,6 +302,7 @@
                             <th class="num">매도 금액</th>
                             <th class="num">수수료</th>
                             <th class="num">실현 손익</th>
+                            <th class="num">수익률</th>
                             <th class="num">거래 횟수</th>
                         </tr>
                     </thead>
@@ -453,6 +499,21 @@ async function loadSummary() {
         pnlEl.textContent = (pnl >= 0 ? '+' : '') + formatKRW(pnl);
         pnlEl.className = `fw-bold ${pnl >= 0 ? 'text-up' : 'text-down'}`;
 
+        // 성과 통계
+        if (t.win_rate !== undefined && t.trade_count > 0) {
+            document.getElementById('perf-stats').classList.remove('d-none');
+            const wrEl = document.getElementById('perf-winrate');
+            wrEl.textContent = t.win_rate + '%';
+            wrEl.className = `fw-bold ${t.win_rate >= 50 ? 'text-up' : 'text-down'}`;
+            document.getElementById('perf-winloss').textContent = `${t.win_count}W / ${t.loss_count}L`;
+            const avgEl = document.getElementById('perf-avgret');
+            avgEl.textContent = (t.avg_return >= 0 ? '+' : '') + t.avg_return + '%';
+            avgEl.className = `fw-bold ${t.avg_return >= 0 ? 'text-up' : 'text-down'}`;
+            document.getElementById('perf-best').textContent = '+' + t.best_return + '%';
+            document.getElementById('perf-worst').textContent = t.worst_return + '%';
+            document.getElementById('perf-avgwl').innerHTML = `<span class="text-up">${formatKRW(t.avg_win)}</span> / <span class="text-down">${formatKRW(t.avg_loss)}</span>`;
+        }
+
         // 종목별 요약
         const tbody = document.getElementById('summary-tbody');
         tbody.innerHTML = '';
@@ -472,6 +533,7 @@ async function loadSummary() {
                 <td class="num">${formatKRW(s.sell_amount)}</td>
                 <td class="num">${formatKRW(s.fee_total)}</td>
                 <td class="num ${pnlClass} fw-semibold">${s.realized_pnl >= 0 ? '+' : ''}${formatKRW(s.realized_pnl)}</td>
+                <td class="num ${pnlClass}">${s.realized_return ? (s.realized_return >= 0 ? '+' : '') + s.realized_return + '%' : '—'}</td>
                 <td class="num">${s.trade_count}건</td>
             `;
             tbody.appendChild(tr);
