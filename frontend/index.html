@@ -1205,8 +1205,56 @@ function escapeHtml(str) {
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── Local cache for instant load ─────────────────────────────────────────────
+const CACHE_KEY_PORTFOLIO = 'cached_portfolio';
+const CACHE_KEY_ANALYTICS = 'cached_analytics';
+
+function saveToLocalCache(portfolio, analytics) {
+    try {
+        localStorage.setItem(CACHE_KEY_PORTFOLIO, JSON.stringify(portfolio));
+        localStorage.setItem(CACHE_KEY_ANALYTICS, JSON.stringify(analytics));
+    } catch (e) { /* quota exceeded — ignore */ }
+}
+
+function loadFromLocalCache() {
+    try {
+        const p = localStorage.getItem(CACHE_KEY_PORTFOLIO);
+        const a = localStorage.getItem(CACHE_KEY_ANALYTICS);
+        if (p && a) return { portfolio: JSON.parse(p), analytics: JSON.parse(a) };
+    } catch (e) { /* parse error — ignore */ }
+    return null;
+}
+
+function renderFromCache() {
+    const cached = loadFromLocalCache();
+    if (!cached) return false;
+    const { portfolio, analytics } = cached;
+    portfolioData = portfolio;
+    analyticsData = analytics;
+    portfolio.assets = portfolio.assets.filter(a => (a.quantity * a.avg_price) >= 10000);
+    renderSummaryCards(portfolio, analytics);
+    renderSidebarAssets(portfolio.assets);
+    renderPeriodReturns(analytics.period_returns);
+    renderHoldingsTable(portfolio.assets);
+    if (portfolio.assets.length > 0) {
+        renderAllocationChart(portfolio.assets);
+        renderTreemap(portfolio.assets);
+    }
+    renderTop5(analytics.top5_contributors);
+    document.getElementById('skeleton-overlay').classList.add('d-none');
+    document.getElementById('main-content').classList.remove('d-none');
+    // 캐시 데이터 표시 알림
+    const syncTime = new Date(portfolio.last_synced);
+    document.getElementById('last-synced').textContent =
+        syncTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' (캐시)';
+    return true;
+}
+
 // ── Main load ─────────────────────────────────────────────────────────────────
 async function loadDashboard() {
+    // 캐시에서 먼저 렌더링 (즉시 로드)
+    const hasCached = renderFromCache();
+
     try {
         const flashSnap = snapshotFlashTargets();
         const [portfolio, analytics] = await Promise.all([
@@ -1215,6 +1263,9 @@ async function loadDashboard() {
         ]);
         portfolioData = portfolio;
         analyticsData = analytics;
+
+        // 로컬 캐시 저장
+        saveToLocalCache(portfolio, analytics);
 
         // 업비트 API 키 미설정 / 오류 안내
         if (portfolio.sync_error) {
