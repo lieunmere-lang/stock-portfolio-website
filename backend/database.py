@@ -68,7 +68,7 @@ class NewsReport(Base):
     __tablename__ = "news_reports"
 
     id = Column(Integer, primary_key=True)
-    report_date = Column(String(10), nullable=False, unique=True)
+    report_date = Column(String(20), nullable=False, unique=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     summary = Column(Text)
     model_used = Column(String(50))

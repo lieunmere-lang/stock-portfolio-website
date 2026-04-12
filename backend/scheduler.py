@@ -428,17 +428,12 @@ def generate_news_report() -> dict:
         print("[NewsReport] Analysis returned empty report")
         return report_data
 
-    # 5. DB 저장 (오늘 날짜 리포트가 있으면 덮어쓰기)
-    today = datetime.now().strftime("%Y-%m-%d")
+    # 5. DB 저장 (매 생성마다 별도 리포트)
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     with Session(engine) as session:
-        existing = session.query(NewsReport).filter(NewsReport.report_date == today).first()
-        if existing:
-            session.delete(existing)
-            session.commit()
-
         report = NewsReport(
-            report_date=today,
+            report_date=now_str,
             summary=report_data.get("summary", ""),
             model_used=report_data.get("model_used", ""),
             total_collected=len(raw_items),
@@ -481,23 +476,6 @@ def start_scheduler():
         minute=50,
         timezone="Asia/Seoul",
         id="news_report",
-    )
-    # TODO: 테스트용 — 확인 후 제거
-    scheduler.add_job(
-        generate_news_report,
-        "cron",
-        hour=15,
-        minute=0,
-        timezone="Asia/Seoul",
-        id="news_report_test_1",
-    )
-    scheduler.add_job(
-        generate_news_report,
-        "cron",
-        hour=15,
-        minute=15,
-        timezone="Asia/Seoul",
-        id="news_report_test_2",
     )
     scheduler.start()
 
