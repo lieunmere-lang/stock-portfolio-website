@@ -116,6 +116,7 @@ class PriceAlert(Base):
     threshold = Column(Float, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    last_triggered_at = Column(DateTime, nullable=True)
 
 
 class ManualAsset(Base):
@@ -181,6 +182,16 @@ class TradeRecord(Base):
     memo = Column(Text, nullable=True)                # 메모 (수동 입력용)
 
 
+class BotConfig(Base):
+    __tablename__ = "bot_config"
+    id = Column(Integer, primary_key=True)
+    module_name = Column(String(50), nullable=False)
+    channel_id = Column(String(30), nullable=False)
+    config_json = Column(Text, default="{}")
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
     # 기존 DB에 새 컬럼 추가 (이미 존재하면 무시)
@@ -190,6 +201,7 @@ def init_db():
         "ALTER TABLE asset_snapshots ADD COLUMN first_purchase_date TEXT",
         "ALTER TABLE asset_snapshots ADD COLUMN signed_change_price REAL DEFAULT 0",
         "ALTER TABLE asset_snapshots ADD COLUMN signed_change_rate REAL DEFAULT 0",
+        "ALTER TABLE price_alerts ADD COLUMN last_triggered_at DATETIME",
     ]
     with engine.connect() as conn:
         for stmt in migration_stmts:

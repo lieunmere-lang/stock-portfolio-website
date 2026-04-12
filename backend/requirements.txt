@@ -13,3 +13,4 @@ anthropic
 beautifulsoup4
 pandas
 lxml
+discord.py>=2.3
