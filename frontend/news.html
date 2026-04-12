@@ -681,19 +681,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btn-view-list').addEventListener('click', () => switchView('list'));
     document.getElementById('btn-load-more').addEventListener('click', loadReportList);
 
-    await Promise.all([
-        loadReport(),
-        loadReportsList(),
-        loadSidebarAssets(),
-    ]);
-
-    updateNavButtons();
-    document.getElementById('loading-overlay').style.display = 'none';
-    document.getElementById('main-content').style.display = 'block';
-
-    // 생성 중 상태 복원 (F5 대응, 3분 이내면 유지)
+    // 생성 중이면 로딩 건너뛰고 바로 생성 중 상태 표시
     const genStarted = localStorage.getItem('news_generating');
-    if (genStarted && (Date.now() - parseInt(genStarted)) < 180000) {
+    const isGenerating = genStarted && (Date.now() - parseInt(genStarted)) < 180000;
+
+    if (isGenerating) {
+        await loadSidebarAssets();
+        document.getElementById('loading-overlay').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
         showGeneratingState();
         // 5초마다 리포트 완료 여부 폴링
         const pollId = setInterval(async () => {
@@ -710,8 +705,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             } catch(e) { /* 계속 폴링 */ }
         }, 5000);
-    } else if (genStarted) {
-        localStorage.removeItem('news_generating');
+    } else {
+        if (genStarted) localStorage.removeItem('news_generating');
+        await Promise.all([
+            loadReport(),
+            loadReportsList(),
+            loadSidebarAssets(),
+        ]);
+        updateNavButtons();
+        document.getElementById('loading-overlay').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
     }
 });
 </script>
