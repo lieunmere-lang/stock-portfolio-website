@@ -473,6 +473,40 @@ def sync_market_caps():
         print(f"[Scheduler] S&P500 시가총액 동기화 실패: {e}")
 
 
+def _send_discord_notifications():
+    """뉴스 리포트 생성 후 디스코드로 전송 (09:00 KST 실행)"""
+    import asyncio
+    try:
+        from bot.client import bot
+        if bot.is_ready():
+            cog = bot.get_cog("FinanceCog")
+            if cog:
+                loop = bot.loop
+                asyncio.run_coroutine_threadsafe(cog.send_news_report(), loop)
+                asyncio.run_coroutine_threadsafe(cog.send_indicators(), loop)
+                logger.info("Discord notifications scheduled")
+            else:
+                logger.warning("FinanceCog not loaded")
+        else:
+            logger.warning("Discord bot not ready — skipping notifications")
+    except Exception as e:
+        logger.error(f"Discord notification error: {e}")
+
+
+def _check_price_alerts():
+    """5분마다 가격 알림 체크"""
+    import asyncio
+    try:
+        from bot.client import bot
+        if bot.is_ready():
+            cog = bot.get_cog("FinanceCog")
+            if cog:
+                loop = bot.loop
+                asyncio.run_coroutine_threadsafe(cog.check_price_alerts(), loop)
+    except Exception as e:
+        logger.error(f"Price alert check error: {e}")
+
+
 def start_scheduler():
     # 서버 시작 즉시 1회 실행 후, 이후 1분 간격으로 반복
     scheduler.add_job(
@@ -497,6 +531,26 @@ def start_scheduler():
         id="market_cap_sync",
         next_run_time=datetime.now(),  # 서버 시작 시 즉시 1회 실행
     )
+    # 디스코드 뉴스 + 지표 전송 (09:00 KST)
+    scheduler.add_job(
+        _send_discord_notifications,
+        "cron",
+        hour=9,
+        minute=0,
+        timezone="Asia/Seoul",
+        id="discord_notifications",
+        replace_existing=True,
+    )
+
+    # 가격 알림 체크 (5분마다)
+    scheduler.add_job(
+        _check_price_alerts,
+        "interval",
+        minutes=5,
+        id="check_price_alerts",
+        replace_existing=True,
+    )
+
     scheduler.start()
 
 
