@@ -149,6 +149,7 @@ class FinanceCog(commands.Cog):
         logger.info(f"News report sent to channel {channel_id}")
 
     @app_commands.command(name="리포트", description="최신 뉴스 리포트 조회")
+    @app_commands.guild_only()
     async def report_command(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
@@ -210,6 +211,8 @@ class FinanceCog(commands.Cog):
                     logger.info(f"Price alert triggered: {alert.ticker} {alert.condition} {alert.threshold}")
 
     @app_commands.command(name="알림추가", description="가격 알림 등록")
+    @app_commands.guild_only()
+    @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(
         ticker="종목 티커 (예: KRW-BTC)",
         condition="조건",
@@ -233,6 +236,7 @@ class FinanceCog(commands.Cog):
         )
 
     @app_commands.command(name="알림목록", description="설정된 가격 알림 목록")
+    @app_commands.guild_only()
     async def list_alerts(self, interaction: discord.Interaction):
         with SASession(engine) as session:
             alerts = session.query(PriceAlert).filter_by(is_active=True).all()
@@ -253,6 +257,8 @@ class FinanceCog(commands.Cog):
             await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="알림삭제", description="가격 알림 삭제")
+    @app_commands.guild_only()
+    @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(alert_id="삭제할 알림 번호")
     async def delete_alert(self, interaction: discord.Interaction, alert_id: int):
         with SASession(engine) as session:
@@ -286,6 +292,7 @@ class FinanceCog(commands.Cog):
         logger.info(f"Market indicators sent to channel {channel_id}")
 
     @app_commands.command(name="지표", description="현재 시장 지표 조회")
+    @app_commands.guild_only()
     async def indicators_command(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
@@ -294,6 +301,15 @@ class FinanceCog(commands.Cog):
         indicators = await fetch_indicators()
         embed = _build_indicators_embed(indicators)
         await interaction.followup.send(embed=embed)
+
+    # ── Error handler ──
+
+    async def cog_app_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        if isinstance(error, app_commands.MissingPermissions):
+            await interaction.response.send_message("❌ 권한이 없어요.", ephemeral=True)
+        else:
+            logger.error(f"Command error: {error}")
+            await interaction.response.send_message("❌ 오류가 발생했어요.", ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
