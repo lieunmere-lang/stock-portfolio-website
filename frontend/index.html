@@ -745,6 +745,20 @@ function renderAllocationChart(assets) {
 
     const totalVal = values.reduce((s,v)=>s+v,0);
 
+    const datalabelsOpts = {
+        color: '#334155',
+        font: { weight: '600', size: 11 },
+        formatter: (value, ctx) => {
+            const pct = (value / totalVal * 100);
+            if (pct < 3) return '';
+            return `${labels[ctx.dataIndex]}\n${pct.toFixed(1)}%`;
+        },
+        anchor: 'end',
+        align: 'end',
+        offset: 8,
+        textAlign: 'center',
+    };
+
     if (!allocationChart) {
         allocationChart = new Chart(document.getElementById('allocation-chart'), {
             type: 'doughnut',
@@ -754,24 +768,14 @@ function renderAllocationChart(assets) {
             },
             plugins: [ChartDataLabels],
             options: {
-                cutout: '65%',
+                cutout: '60%',
+                layout: { padding: 30 },
                 plugins: {
-                    legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 11 } } },
+                    legend: { display: false },
                     tooltip: { callbacks: { label: ctx => {
                         return ` ${ctx.label}: ${(ctx.parsed/totalVal*100).toFixed(1)}%`;
                     }}},
-                    datalabels: {
-                        color: '#fff',
-                        font: { weight: 'bold', size: 11 },
-                        formatter: (value) => {
-                            const pct = (value / totalVal * 100);
-                            return pct >= 5 ? pct.toFixed(1) + '%' : '';
-                        },
-                        anchor: 'center',
-                        align: 'center',
-                        textStrokeColor: 'rgba(0,0,0,0.3)',
-                        textStrokeWidth: 2,
-                    }
+                    datalabels: datalabelsOpts
                 },
                 maintainAspectRatio: false,
             }
@@ -780,10 +784,7 @@ function renderAllocationChart(assets) {
         allocationChart.data.labels = labels;
         allocationChart.data.datasets[0].data = values;
         allocationChart.data.datasets[0].backgroundColor = COLORS.slice(0, values.length);
-        allocationChart.options.plugins.datalabels.formatter = (value) => {
-            const pct = (value / totalVal * 100);
-            return pct >= 5 ? pct.toFixed(1) + '%' : '';
-        };
+        Object.assign(allocationChart.options.plugins.datalabels, datalabelsOpts);
         allocationChart.options.plugins.tooltip.callbacks.label = ctx => {
             return ` ${ctx.label}: ${(ctx.parsed/totalVal*100).toFixed(1)}%`;
         };
