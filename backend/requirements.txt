@@ -11,3 +11,5 @@ feedparser
 httpx
 anthropic
 beautifulsoup4
+pandas
+lxml
