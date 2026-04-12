@@ -142,6 +142,15 @@
             margin-top: auto;
         }
         .sidebar-link .badge { margin-left: auto; }
+
+        /* Flash highlight on data change */
+        @keyframes flash-fade {
+            0%   { background-color: var(--flash-color); }
+            100% { background-color: transparent; }
+        }
+        .flash-up      { --flash-color: rgba(22,163,74,.18); animation: flash-fade 1s ease-out; }
+        .flash-down    { --flash-color: rgba(220,38,38,.18); animation: flash-fade 1s ease-out; }
+        .flash-neutral { --flash-color: rgba(234,179,8,.18); animation: flash-fade 1s ease-out; }
     </style>
 </head>
 <body class="has-sidebar">
