@@ -370,6 +370,8 @@ def generate_news_report() -> dict:
     import services.collectors.coingecko
     import services.collectors.sec_edgar
     import services.collectors.fear_greed
+    import services.collectors.google_news
+    import services.collectors.investing_calendar
 
     from services.collectors import collect_all
     from services.news_analyzer import analyze_news
