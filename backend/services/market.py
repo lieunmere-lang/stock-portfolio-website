@@ -249,3 +249,120 @@ def _fetch_commodity_heatmap(period: str) -> List[Dict]:
             continue
 
     return result
+
+
+# ── 위젯 지표 수집 ────────────────────────────────────────────────────────────
+
+def fetch_market_indicators() -> Dict[str, Any]:
+    """8개 위젯 카드용 시장 지표 반환. _indicators_cache에 10분 TTL 캐시."""
+    now = datetime.utcnow()
+    cached = _indicators_cache
+    if cached.get("data") and cached.get("fetched_at"):
+        if (now - cached["fetched_at"]).total_seconds() < INDICATORS_TTL:
+            return cached["data"]
+
+    result: Dict[str, Any] = {}
+    result["fear_greed"] = _fetch_fear_greed()
+    result["usd_krw"] = _fetch_yf_indicator("USDKRW=X", "USD/KRW")
+    result["jpy_krw"] = _fetch_yf_indicator("JPYKRW=X", "JPY/KRW")
+    result["vix"] = _fetch_yf_indicator("^VIX", "VIX")
+    result["dxy"] = _fetch_yf_indicator("DX-Y.NYB", "DXY")
+    result["us10y"] = _fetch_yf_indicator("^TNX", "US 10Y")
+    result["btc_dominance"] = _fetch_btc_dominance()
+    result["kimchi_premium"] = _fetch_kimchi_premium(result.get("usd_krw", {}).get("value"))
+
+    _indicators_cache["data"] = result
+    _indicators_cache["fetched_at"] = now
+    return result
+
+
+def _fetch_yf_indicator(yf_ticker: str, label: str) -> Dict[str, Any]:
+    """yfinance에서 단일 지표 데이터 수집."""
+    try:
+        hist = yf.Ticker(yf_ticker).history(period="10d")
+        if hist is None or len(hist) < 2:
+            return {"value": None, "change_pct": None, "sparkline": []}
+        closes = hist["Close"].dropna().tolist()
+        if len(closes) < 2:
+            return {"value": None, "change_pct": None, "sparkline": []}
+        current = closes[-1]
+        prev = closes[-2]
+        change_pct = (current - prev) / prev * 100 if prev != 0 else 0.0
+        sparkline = [round(v, 4) for v in closes[-7:]]
+        return {
+            "value": round(current, 2),
+            "change_pct": round(change_pct, 2),
+            "sparkline": sparkline,
+        }
+    except Exception as e:
+        print(f"[Market] {label} ({yf_ticker}) 지표 조회 실패: {e}")
+        return {"value": None, "change_pct": None, "sparkline": []}
+
+
+def _fetch_fear_greed() -> Dict[str, Any]:
+    """Alternative.me Fear & Greed Index 조회."""
+    try:
+        resp = requests.get("https://api.alternative.me/fng/?limit=7", timeout=10)
+        resp.raise_for_status()
+        data = resp.json().get("data", [])
+        if not data:
+            return {"value": None, "label": None, "sparkline": []}
+        current = data[0]
+        value = int(current["value"])
+        label = current.get("value_classification", "")
+        sparkline = [int(item["value"]) for item in reversed(data)]
+        return {"value": value, "label": label, "sparkline": sparkline}
+    except Exception as e:
+        print(f"[Market] Fear & Greed Index 조회 실패: {e}")
+        return {"value": None, "label": None, "sparkline": []}
+
+
+def _fetch_btc_dominance() -> Dict[str, Any]:
+    """CoinGecko에서 BTC 도미넌스 조회."""
+    try:
+        resp = requests.get("https://api.coingecko.com/api/v3/global", timeout=10)
+        resp.raise_for_status()
+        data = resp.json().get("data", {})
+        btc_dom = data.get("market_cap_percentage", {}).get("btc")
+        if btc_dom is None:
+            return {"value": None, "change_pct": None, "sparkline": []}
+        btc_dom = round(float(btc_dom), 1)
+        return {"value": btc_dom, "change_pct": None, "sparkline": [btc_dom]}
+    except Exception as e:
+        print(f"[Market] BTC 도미넌스 조회 실패: {e}")
+        return {"value": None, "change_pct": None, "sparkline": []}
+
+
+def _fetch_kimchi_premium(usd_krw_rate: Optional[float] = None) -> Dict[str, Any]:
+    """김치 프리미엄 계산 (업비트 BTC/KRW vs CoinGecko BTC/USD)."""
+    try:
+        # 업비트 BTC/KRW
+        upbit_resp = requests.get(
+            "https://api.upbit.com/v1/ticker?markets=KRW-BTC", timeout=10
+        )
+        upbit_resp.raise_for_status()
+        upbit_btc_krw = float(upbit_resp.json()[0]["trade_price"])
+
+        # CoinGecko BTC/USD
+        cg_resp = requests.get(
+            "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",
+            timeout=10,
+        )
+        cg_resp.raise_for_status()
+        btc_usd = float(cg_resp.json()["bitcoin"]["usd"])
+
+        # USD/KRW 환율
+        usd_krw = usd_krw_rate
+        if usd_krw is None:
+            from services.stock import get_usd_krw
+            usd_krw = get_usd_krw()
+
+        if not usd_krw or usd_krw == 0:
+            return {"value": None, "change_pct": None, "sparkline": []}
+
+        premium = ((upbit_btc_krw - btc_usd * usd_krw) / (btc_usd * usd_krw)) * 100
+        premium = round(premium, 2)
+        return {"value": premium, "change_pct": None, "sparkline": [premium]}
+    except Exception as e:
+        print(f"[Market] 김치 프리미엄 계산 실패: {e}")
+        return {"value": None, "change_pct": None, "sparkline": []}
