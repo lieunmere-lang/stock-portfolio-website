@@ -1,7 +1,7 @@
 """Yahoo Finance 뉴스 수집기 — yfinance 라이브러리 사용."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 import yfinance as yf
@@ -24,6 +24,7 @@ class YahooFinanceCollector(BaseCollector):
             return []
 
         items: List[RawNewsItem] = []
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
 
         for ticker in tickers:
             try:
@@ -47,6 +48,8 @@ class YahooFinanceCollector(BaseCollector):
                         published_at = datetime.fromtimestamp(pub_date, tz=timezone.utc)
 
                     if title:
+                        if published_at and published_at < cutoff:
+                            continue
                         items.append(RawNewsItem(
                             source=self.name,
                             title=f"[{ticker}] {title}",

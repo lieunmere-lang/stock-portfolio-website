@@ -2,7 +2,7 @@
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 import httpx
@@ -34,6 +34,7 @@ class AlphaVantageCollector(BaseCollector):
             return []
 
         items: List[RawNewsItem] = []
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
 
         async with httpx.AsyncClient(timeout=15) as client:
             for ticker in tickers[:3]:  # 무료 25회/일 제한 — 상위 3종목만
@@ -69,6 +70,8 @@ class AlphaVantageCollector(BaseCollector):
                                 sentiment = f" [Sentiment: {label} ({score})]"
                                 break
 
+                        if published_at and published_at < cutoff:
+                            continue
                         items.append(RawNewsItem(
                             source=self.name,
                             title=f"[{ticker}] {title}{sentiment}",
