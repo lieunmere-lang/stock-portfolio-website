@@ -111,6 +111,20 @@
             overflow: hidden;
         }
         #heatmap-svg { width: 100%; height: 100%; }
+        /* 호버 툴팁 */
+        #heatmap-tooltip {
+            position: absolute; pointer-events: none;
+            background: rgba(15,23,42,.92); color: #fff;
+            padding: .5rem .75rem; border-radius: 8px;
+            font-size: .78rem; line-height: 1.5;
+            box-shadow: 0 4px 12px rgba(0,0,0,.3);
+            z-index: 100; display: none;
+            white-space: nowrap;
+        }
+        #heatmap-tooltip .tt-ticker { font-weight: 700; font-size: .9rem; }
+        #heatmap-tooltip .tt-name { color: #94a3b8; }
+        #heatmap-tooltip .tt-sector { color: #64748b; font-size: .72rem; }
+        #heatmap-tooltip .tt-change { font-weight: 600; font-size: .85rem; }
         #heatmap-loading {
             position: absolute; inset: 0;
             display: flex; align-items: center; justify-content: center;
@@ -214,6 +228,7 @@
     <!-- Heatmap section -->
     <div class="mb-4">
         <div id="heatmap-container">
+            <div id="heatmap-tooltip"></div>
             <div id="heatmap-loading">
                 <div class="text-center">
                     <div class="spinner-border spinner-border-sm mb-2" style="color:#94a3b8;"></div>
@@ -351,6 +366,23 @@ async function loadHeatmap(period) {
         .paddingInner(2)
         .paddingOuter(2)(root);
 
+    // Tooltip reference
+    const tooltip = document.getElementById('heatmap-tooltip');
+
+    // Draw sector background rects (depth=1) — clear visual boundaries
+    svgEl.selectAll('.sector-bg')
+        .data(root.children || [])
+        .enter()
+        .append('rect')
+        .attr('class', 'sector-bg')
+        .attr('x', d => d.x0)
+        .attr('y', d => d.y0)
+        .attr('width',  d => Math.max(0, d.x1 - d.x0))
+        .attr('height', d => Math.max(0, d.y1 - d.y0))
+        .attr('fill', 'none')
+        .attr('stroke', '#0f172a')
+        .attr('stroke-width', 2);
+
     // Draw sector labels (depth=1 nodes)
     svgEl.selectAll('.sector-label')
         .data(root.children || [])
@@ -359,12 +391,20 @@ async function loadHeatmap(period) {
         .attr('class', 'sector-label')
         .attr('x', d => d.x0 + 4)
         .attr('y', d => d.y0 + 13)
-        .attr('fill', '#94a3b8')
+        .attr('fill', '#cbd5e1')
         .attr('font-size', '10px')
         .attr('font-weight', '700')
         .attr('font-family', 'Inter, sans-serif')
         .attr('text-anchor', 'start')
         .text(d => d.data.name);
+
+    // Build sector lookup for each leaf
+    const leafSectorMap = {};
+    (root.children || []).forEach(sector => {
+        (sector.leaves() || []).forEach(leaf => {
+            leafSectorMap[leaf.data.name] = sector.data.name;
+        });
+    });
 
     // Draw leaf cells
     const leaves = root.leaves();
@@ -373,14 +413,47 @@ async function loadHeatmap(period) {
         .enter()
         .append('g')
         .attr('class', 'cell')
-        .attr('transform', d => `translate(${d.x0},${d.y0})`);
+        .attr('transform', d => `translate(${d.x0},${d.y0})`)
+        .style('cursor', 'pointer');
 
     cell.append('rect')
         .attr('width',  d => Math.max(0, d.x1 - d.x0))
         .attr('height', d => Math.max(0, d.y1 - d.y0))
         .attr('fill',   d => heatColor(d.data.change_pct || 0))
-        .attr('rx', 2)
-        .attr('ry', 2);
+        .attr('stroke', '#1a1a2e')
+        .attr('stroke-width', 0.5)
+        .attr('rx', 1)
+        .attr('ry', 1);
+
+    // Hover events — Finviz-style tooltip
+    cell.on('mousemove', function(event, d) {
+        const pct = d.data.change_pct;
+        const pctStr = pct != null ? (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%' : 'N/A';
+        const pctColor = pct > 0 ? '#4ade80' : pct < 0 ? '#f87171' : '#94a3b8';
+        const sector = leafSectorMap[d.data.name] || '';
+        const fullName = d.data.fullName || d.data.name;
+        const ticker = d.data.ticker || d.data.name;
+
+        tooltip.innerHTML = `
+            <div class="tt-ticker">${ticker}</div>
+            <div class="tt-name">${fullName}</div>
+            <div class="tt-sector">${sector}</div>
+            <div class="tt-change" style="color:${pctColor}">${pctStr}</div>`;
+        tooltip.style.display = 'block';
+
+        // Position tooltip near cursor
+        const rect = document.getElementById('heatmap-container').getBoundingClientRect();
+        let left = event.clientX - rect.left + 12;
+        let top = event.clientY - rect.top - 10;
+        // Keep tooltip inside container
+        if (left + 180 > rect.width) left = left - 200;
+        if (top + 80 > rect.height) top = top - 80;
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = top + 'px';
+    })
+    .on('mouseleave', function() {
+        tooltip.style.display = 'none';
+    });
 
     // Ticker text (always if cell is wide enough)
     cell.filter(d => (d.x1 - d.x0) > 28 && (d.y1 - d.y0) > 16)
@@ -388,56 +461,37 @@ async function loadHeatmap(period) {
         .attr('x', d => (d.x1 - d.x0) / 2)
         .attr('y', d => {
             const h = d.y1 - d.y0;
-            const showName = h > 52;
             const showPct  = h > 30;
-            if (showName && showPct) return h / 2 - 10;
-            if (showPct) return h / 2 - 4;
-            return h / 2 + 5;
+            if (showPct) return h / 2 - 2;
+            return h / 2 + 4;
         })
         .attr('text-anchor', 'middle')
         .attr('fill', '#fff')
         .attr('font-size', d => {
             const w = d.x1 - d.x0;
-            return w > 70 ? '12px' : '10px';
+            if (w > 80) return '13px';
+            if (w > 50) return '11px';
+            return '9px';
         })
         .attr('font-weight', '700')
         .attr('font-family', 'Inter, sans-serif')
-        .text(d => d.data.ticker || d.data.name);
+        .attr('pointer-events', 'none')
+        .text(d => d.data.name);
 
     // Change pct text
     cell.filter(d => (d.x1 - d.x0) > 28 && (d.y1 - d.y0) > 30)
         .append('text')
         .attr('x', d => (d.x1 - d.x0) / 2)
-        .attr('y', d => {
-            const h = d.y1 - d.y0;
-            const showName = h > 52;
-            if (showName) return h / 2 + 4;
-            return h / 2 + 10;
-        })
+        .attr('y', d => (d.y1 - d.y0) / 2 + 12)
         .attr('text-anchor', 'middle')
-        .attr('fill', 'rgba(255,255,255,0.85)')
+        .attr('fill', 'rgba(255,255,255,0.8)')
         .attr('font-size', '10px')
         .attr('font-family', 'Inter, sans-serif')
+        .attr('pointer-events', 'none')
         .text(d => {
             const pct = d.data.change_pct;
             if (pct == null) return '';
             return (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
-        });
-
-    // Name text (only if cell is tall enough)
-    cell.filter(d => (d.x1 - d.x0) > 40 && (d.y1 - d.y0) > 52)
-        .append('text')
-        .attr('x', d => (d.x1 - d.x0) / 2)
-        .attr('y', d => (d.y1 - d.y0) / 2 + 18)
-        .attr('text-anchor', 'middle')
-        .attr('fill', 'rgba(255,255,255,0.6)')
-        .attr('font-size', '9px')
-        .attr('font-family', 'Inter, sans-serif')
-        .text(d => {
-            const w = d.x1 - d.x0;
-            const name = d.data.name || '';
-            const maxLen = Math.floor(w / 6);
-            return name.length > maxLen ? name.slice(0, maxLen) + '…' : name;
         });
 }
 
