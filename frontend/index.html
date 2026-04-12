@@ -171,6 +171,7 @@
         <a href="/#returns"    class="sidebar-link" data-nav="returns">수익률 분석</a>
         <a href="/#allocation" class="sidebar-link" data-nav="allocation">자산배분</a>
         <a href="/#risk"       class="sidebar-link" data-nav="risk">리스크 지표</a>
+        <a href="#earnings" class="sidebar-link" data-nav="earnings">실적 발표</a>
 
         <div class="sidebar-group-label">분석</div>
         <span class="sidebar-link disabled">뉴스 리포트 <span class="badge text-bg-light">준비중</span></span>
@@ -377,6 +378,25 @@
                     </tr>
                 </thead>
                 <tbody id="holdings-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ③-2 어닝 캘린더 -->
+    <div id="earnings" class="section-card bg-white mb-4 d-none">
+        <div class="p-4 pb-0">
+            <div class="section-title">다가오는 실적 발표</div>
+        </div>
+        <div class="table-responsive">
+            <table class="table holdings-table mb-0">
+                <thead>
+                    <tr>
+                        <th>종목</th>
+                        <th class="num">실적 발표일</th>
+                        <th class="num">D-Day</th>
+                    </tr>
+                </thead>
+                <tbody id="earnings-tbody"></tbody>
             </table>
         </div>
     </div>
@@ -922,6 +942,37 @@ async function loadBeta() {
     }
 }
 
+async function loadEarningsCalendar() {
+    try {
+        const data = await apiFetch('/api/stock');
+        const earnings = data.earnings || [];
+        if (!earnings.length) return;
+
+        const tbody = document.getElementById('earnings-tbody');
+        tbody.innerHTML = earnings.map(e => {
+            const isUrgent = e.days_until <= 7;
+            const urgentCls = isUrgent ? 'fw-bold' : '';
+            const dday = e.days_until === 0 ? '<span class="badge bg-danger">오늘</span>'
+                       : e.days_until <= 7 ? `<span class="badge bg-warning text-dark">D-${e.days_until}</span>`
+                       : `D-${e.days_until}`;
+            return `<tr class="${urgentCls}">
+                <td>
+                    <a href="detail.html?type=stock&ticker=${e.ticker}" class="text-decoration-none text-dark">
+                        <span class="fw-semibold">${e.ticker}</span>
+                        <span class="text-muted" style="font-size:.8rem;margin-left:.3rem;">${e.name}</span>
+                    </a>
+                </td>
+                <td class="num">${e.earnings_date}</td>
+                <td class="num">${dday}</td>
+            </tr>`;
+        }).join('');
+
+        document.getElementById('earnings').classList.remove('d-none');
+    } catch(e) {
+        console.error('earnings calendar error:', e);
+    }
+}
+
 // ── Main load ─────────────────────────────────────────────────────────────────
 async function loadDashboard() {
     try {
@@ -962,6 +1013,7 @@ async function loadDashboard() {
 
         // 베타는 느리므로 비동기 로드
         loadBeta();
+        loadEarningsCalendar();  // 비동기 — 메인 로딩 블로킹 안함
         applyFlash(flashSnap);
     } catch (e) {
         if (e.message === 'Unauthenticated' || e.message === 'Unauthorized') return;
@@ -991,7 +1043,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── Sidebar scroll-spy + offcanvas auto-close ─────────────────────────────────
 (function initSidebar() {
-    const sectionIds = ['summary', 'returns', 'risk', 'holdings', 'allocation'];
+    const sectionIds = ['summary', 'returns', 'risk', 'holdings', 'earnings', 'allocation'];
     const visible = new Set();
 
     const observer = new IntersectionObserver((entries) => {
