@@ -156,6 +156,38 @@
         .indicator-value { font-size: 1.35rem; font-weight: 700; color: #1e293b; line-height: 1; margin-bottom: .25rem; }
         .indicator-change { font-size: .8rem; font-weight: 600; }
         .indicator-sparkline { display: block; }
+
+        /* Mobile optimization */
+        @media (max-width: 767px) {
+            .container, .container-fluid {
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+            .card {
+                border-radius: 0.75rem;
+            }
+            .card-body {
+                padding: 0.875rem;
+            }
+            h1, .h1 { font-size: 1.5rem; }
+            h2, .h2 { font-size: 1.25rem; }
+            h3, .h3 { font-size: 1.1rem; }
+            .table { font-size: 0.8rem; }
+            .table th, .table td {
+                padding: 0.4rem 0.5rem;
+                white-space: nowrap;
+            }
+            .btn { font-size: 0.875rem; }
+            .navbar-brand { font-size: 1rem; }
+        }
+
+        @media (max-width: 575px) {
+            .card-body { padding: 0.75rem; }
+            .table { font-size: 0.75rem; }
+            .table th, .table td {
+                padding: 0.3rem 0.4rem;
+            }
+        }
     </style>
 </head>
 <body class="has-sidebar">
