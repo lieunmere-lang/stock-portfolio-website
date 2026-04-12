@@ -13,9 +13,6 @@ _indicators_cache: Dict[str, Any] = {}     # {"data": {...}, "fetched_at": datet
 SP500_TTL = 86400 * 7    # 7일 (종목 구성은 드물게 변경)
 HEATMAP_TTL = 900         # 15분
 INDICATORS_TTL = 600      # 10분
-MCAP_TTL = 86400          # 24시간
-
-_mcap_cache: Dict[str, Any] = {}  # {"data": {ticker: mcap}, "fetched_at": datetime}
 
 
 def get_sp500_list() -> List[Dict[str, str]]:
@@ -111,8 +108,6 @@ def _fetch_stock_heatmap(period: str) -> List[Dict]:
         print(f"[Market] S&P500 히트맵 다운로드 실패: {e}")
         return []
 
-    market_caps = _get_sp500_market_caps(tickers)
-
     result = []
     for ticker in tickers:
         try:
@@ -120,6 +115,7 @@ def _fetch_stock_heatmap(period: str) -> List[Dict]:
             if ticker_data is None or len(ticker_data) < 2:
                 continue
             closes = ticker_data["Close"].dropna()
+            volumes = ticker_data["Volume"].dropna()
             if len(closes) < 2:
                 continue
             first_close = float(closes.iloc[0])
@@ -127,12 +123,15 @@ def _fetch_stock_heatmap(period: str) -> List[Dict]:
             if first_close == 0:
                 continue
             change_pct = (last_close - first_close) / first_close * 100
+            # 시가총액 proxy: 최근 종가 × 최근 거래량 (상대적 크기 비교용)
+            last_volume = float(volumes.iloc[-1]) if len(volumes) > 0 else 0
+            mcap_proxy = last_close * last_volume
             meta = ticker_meta.get(ticker, {})
             result.append({
                 "ticker": ticker,
                 "name": meta.get("name", ticker),
                 "sector": meta.get("sector", ""),
-                "market_cap": market_caps.get(ticker, 0),
+                "market_cap": mcap_proxy,
                 "change_pct": round(change_pct, 2),
             })
         except Exception as e:
@@ -140,38 +139,6 @@ def _fetch_stock_heatmap(period: str) -> List[Dict]:
             continue
 
     return result
-
-
-def _get_sp500_market_caps(tickers: List[str]) -> Dict[str, float]:
-    """S&P500 종목 시가총액 일괄 조회. 24시간 캐시."""
-    now = datetime.utcnow()
-    cached = _mcap_cache
-    if cached.get("data") and cached.get("fetched_at"):
-        if (now - cached["fetched_at"]).total_seconds() < MCAP_TTL:
-            return cached["data"]
-
-    mcap_dict: Dict[str, float] = {}
-    batch_size = 50
-
-    for i in range(0, len(tickers), batch_size):
-        batch = tickers[i: i + batch_size]
-        try:
-            tickers_obj = yf.Tickers(" ".join(batch))
-            for ticker in batch:
-                try:
-                    fast_info = tickers_obj.tickers[ticker].fast_info
-                    mcap = getattr(fast_info, "market_cap", None) or 0
-                    mcap_dict[ticker] = float(mcap)
-                except Exception:
-                    mcap_dict[ticker] = 0
-        except Exception as e:
-            print(f"[Market] 시가총액 배치 조회 실패 (배치 {i}): {e}")
-            for ticker in batch:
-                mcap_dict.setdefault(ticker, 0)
-
-    _mcap_cache["data"] = mcap_dict
-    _mcap_cache["fetched_at"] = now
-    return mcap_dict
 
 
 def _fetch_coin_heatmap(period: str) -> List[Dict]:
