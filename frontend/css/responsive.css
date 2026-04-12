@@ -1,0 +1,197 @@
+/* ============================================
+   Responsive Design - Shared across all pages
+   ============================================ */
+
+/* --- Tablet (max 767px) --- */
+@media (max-width: 767px) {
+    .container, .container-fluid {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    .card {
+        border-radius: 0.75rem;
+    }
+    .card-body {
+        padding: 0.875rem;
+    }
+    h1, .h1 { font-size: 1.5rem; }
+    h2, .h2 { font-size: 1.25rem; }
+    h3, .h3 { font-size: 1.1rem; }
+    .table { font-size: 0.8rem; }
+    .table th, .table td {
+        padding: 0.4rem 0.5rem;
+        white-space: nowrap;
+    }
+    .btn { font-size: 0.875rem; }
+    .navbar-brand { font-size: 1rem; }
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Summary cards: hide icon, full width for value */
+    .summary-card {
+        padding: 0.75rem !important;
+    }
+    .summary-card .icon-badge {
+        display: none !important;
+    }
+    .summary-card .d-flex.gap-3 {
+        gap: 0 !important;
+    }
+    .summary-card .fs-4 {
+        font-size: 1.05rem !important;
+        line-height: 1.3;
+        word-break: keep-all;
+        overflow-wrap: break-word;
+    }
+    .summary-card .text-muted {
+        font-size: 0.68rem !important;
+    }
+
+    /* Section cards */
+    .section-card {
+        padding: 0.875rem !important;
+    }
+
+    /* Period return pills */
+    .period-pill {
+        font-size: 0.7rem !important;
+        padding: 0.2rem 0.4rem !important;
+    }
+
+    /* Market indicator cards */
+    .indicator-card {
+        padding: 0.75rem 0.875rem;
+    }
+    .indicator-value {
+        font-size: 1.1rem !important;
+    }
+
+    /* News preview */
+    #news-preview {
+        padding: 0.875rem !important;
+    }
+
+    /* Chart containers - prevent overflow */
+    .chart-wrap canvas {
+        max-width: 100%;
+    }
+
+    /* Correlation table */
+    .corr-table th, .corr-table td {
+        font-size: 0.65rem !important;
+        padding: 0.2rem 0.3rem !important;
+    }
+
+    /* Treemap tiles */
+    .treemap-tile {
+        min-width: 50px !important;
+    }
+}
+
+/* --- Mobile small (max 575px) --- */
+@media (max-width: 575px) {
+    .card-body { padding: 0.75rem; }
+    .table { font-size: 0.75rem; }
+    .table th, .table td {
+        padding: 0.3rem 0.4rem;
+    }
+
+    /* Summary cards: smaller font */
+    .summary-card {
+        padding: 0.6rem !important;
+    }
+    .summary-card .fs-4 {
+        font-size: 0.95rem !important;
+    }
+    .summary-card .text-muted {
+        font-size: 0.62rem !important;
+    }
+    .summary-card .fw-semibold {
+        font-size: 0.72rem !important;
+    }
+
+    /* Period returns: allow wrap */
+    #period-returns-row {
+        flex-wrap: wrap !important;
+        gap: 0.25rem;
+    }
+    .period-pill {
+        font-size: 0.65rem !important;
+        padding: 0.15rem 0.35rem !important;
+    }
+
+    /* Market indicators */
+    .indicator-value {
+        font-size: 1rem !important;
+    }
+    .indicator-change {
+        font-size: 0.72rem !important;
+    }
+
+    /* Section cards: tighter padding */
+    .section-card {
+        padding: 0.75rem !important;
+    }
+
+    /* News items */
+    .news-item-row {
+        font-size: 0.8rem;
+    }
+
+    /* Filter bar wrap */
+    .filter-bar {
+        gap: 0.35rem;
+    }
+    .filter-bar select, .filter-bar input {
+        font-size: 0.8rem;
+    }
+
+    /* Journal entries */
+    .summary-ticker-table td {
+        padding: 0.35rem 0.5rem !important;
+        font-size: 0.75rem !important;
+    }
+
+    /* Rebalance table */
+    .recommend-table td {
+        padding: 0.4rem 0.5rem !important;
+        font-size: 0.75rem !important;
+    }
+}
+
+/* --- Extra small (max 400px) --- */
+@media (max-width: 400px) {
+    .container, .container-fluid {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    /* Summary cards: even smaller */
+    .summary-card {
+        padding: 0.5rem !important;
+    }
+    .summary-card .fs-4 {
+        font-size: 0.85rem !important;
+    }
+    .summary-card .text-muted {
+        font-size: 0.58rem !important;
+    }
+
+    .section-card {
+        padding: 0.6rem !important;
+    }
+
+    .fs-5 {
+        font-size: 1rem !important;
+    }
+
+    /* Holdings table: allow horizontal scroll */
+    .holdings-table {
+        font-size: 0.7rem;
+    }
+    .holdings-table th, .holdings-table td {
+        padding: 0.25rem 0.35rem !important;
+    }
+}

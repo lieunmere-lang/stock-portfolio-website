@@ -1,7 +1,8 @@
-const CACHE_NAME = 'portfolio-v3';
+const CACHE_NAME = 'portfolio-v4';
 const STATIC_ASSETS = [
   '/',
   '/login.html',
+  '/css/responsive.css',
   '/manifest.json',
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
   'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css',
@@ -32,8 +33,8 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
-  // HTML and icons: network first (always get latest)
-  if (event.request.url.endsWith('.html') || event.request.url.includes('/icons/')) {
+  // HTML, CSS, and icons: network first (always get latest)
+  if (event.request.url.endsWith('.html') || event.request.url.endsWith('.css') || event.request.url.includes('/icons/')) {
     event.respondWith(
       fetch(event.request).then((resp) => {
         const clone = resp.clone();
