@@ -118,13 +118,19 @@ def _fetch_stock_heatmap(period: str) -> List[Dict]:
     for ticker in tickers:
         try:
             ticker_data = data[ticker]
-            if ticker_data is None or len(ticker_data) < 2:
+            if ticker_data is None or ticker_data.empty:
                 continue
             closes = ticker_data["Close"].dropna()
-            if len(closes) < 2:
+            if closes.empty:
                 continue
-            first_close = float(closes.iloc[0])
-            last_close = float(closes.iloc[-1])
+
+            if len(closes) >= 2:
+                first_close = float(closes.iloc[0])
+                last_close = float(closes.iloc[-1])
+            else:
+                opens = ticker_data["Open"].dropna()
+                first_close = float(opens.iloc[0]) if not opens.empty else float(closes.iloc[0])
+                last_close = float(closes.iloc[0])
             if first_close == 0:
                 continue
             change_pct = (last_close - first_close) / first_close * 100
@@ -236,13 +242,22 @@ def _fetch_commodity_heatmap(period: str) -> List[Dict]:
     for yf_ticker, name, display_ticker in commodities:
         try:
             hist = yf.Ticker(yf_ticker).history(period=yf_period)
-            if hist is None or len(hist) < 2:
+            if hist is None or hist.empty:
                 continue
             closes = hist["Close"].dropna()
-            if len(closes) < 2:
+            if closes.empty:
                 continue
-            first_close = float(closes.iloc[0])
-            last_close = float(closes.iloc[-1])
+
+            if len(closes) >= 2:
+                # 2일 이상 데이터가 있으면 첫날 대비 마지막날 변동률
+                first_close = float(closes.iloc[0])
+                last_close = float(closes.iloc[-1])
+            else:
+                # 1일치만 있으면 (주말/휴일) 시가 대비 종가 변동률
+                opens = hist["Open"].dropna()
+                first_close = float(opens.iloc[0]) if not opens.empty else float(closes.iloc[0])
+                last_close = float(closes.iloc[0])
+
             if first_close == 0:
                 continue
             change_pct = (last_close - first_close) / first_close * 100
