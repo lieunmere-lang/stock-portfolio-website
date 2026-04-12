@@ -149,10 +149,6 @@ class StockHolding(Base):
 
 
 def init_db():
-    # 기존 news_reports 테이블 DROP (빈 테이블, 스키마 변경을 위해)
-    with engine.connect() as conn:
-        conn.execute(text("DROP TABLE IF EXISTS news_reports"))
-        conn.commit()
     Base.metadata.create_all(bind=engine)
     # 기존 DB에 새 컬럼 추가 (이미 존재하면 무시)
     migration_stmts = [
