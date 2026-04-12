@@ -29,7 +29,7 @@ class ReutersCollector(BaseCollector):
         cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
         items: List[RawNewsItem] = []
 
-        async with httpx.AsyncClient(timeout=15, headers={"User-Agent": USER_AGENT}) as client:
+        async with httpx.AsyncClient(timeout=15, headers={"User-Agent": USER_AGENT}, follow_redirects=True) as client:
             for feed_url, feed_name in RSS_FEEDS:
                 try:
                     resp = await client.get(feed_url)

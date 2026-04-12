@@ -375,7 +375,6 @@ def generate_news_report() -> dict:
     import services.collectors.alpha_vantage
     import services.collectors.fred
     import services.collectors.reuters
-    import services.collectors.bloomberg
     import services.collectors.finviz
 
     from services.collectors import collect_all
