@@ -89,35 +89,59 @@ def fetch_heatmap_data(period: str = "1d") -> Dict[str, List[Dict]]:
     return result
 
 
+STOCKS_PER_SECTOR = 5  # 섹터별 상위 N개 종목만 표시
+
+
 def _fetch_stock_heatmap(period: str) -> List[Dict]:
-    """S&P500 종목 히트맵 데이터 수집."""
+    """S&P500에서 섹터별 시총 상위 종목의 히트맵 데이터 수집."""
     yf_period = _period_to_yf(period)
     sp500 = get_sp500_list()
     if not sp500:
         return []
 
-    tickers = [item["ticker"] for item in sp500]
+    all_tickers = [item["ticker"] for item in sp500]
     ticker_meta = {item["ticker"]: item for item in sp500}
+
+    # 시가총액 캐시에서 섹터별 상위 N개 선별
+    market_caps = _get_sp500_market_caps(all_tickers)
+
+    sector_groups: Dict[str, List[Dict]] = {}
+    for item in sp500:
+        sector = item["sector"]
+        if sector not in sector_groups:
+            sector_groups[sector] = []
+        sector_groups[sector].append({
+            **item,
+            "market_cap": market_caps.get(item["ticker"], 0),
+        })
+
+    # 각 섹터에서 시총 상위 N개만 선택
+    selected_tickers = []
+    for sector, items in sector_groups.items():
+        items.sort(key=lambda x: x["market_cap"], reverse=True)
+        for item in items[:STOCKS_PER_SECTOR]:
+            selected_tickers.append(item["ticker"])
+
+    if not selected_tickers:
+        return []
 
     try:
         data = yf.download(
-            tickers,
+            selected_tickers,
             period=yf_period,
             group_by="ticker",
             threads=True,
             progress=False,
         )
     except Exception as e:
-        print(f"[Market] S&P500 히트맵 다운로드 실패: {e}")
+        print(f"[Market] 주식 히트맵 다운로드 실패: {e}")
         return []
 
-    # 실제 시가총액 사용 (24시간 캐시, 서버 시작 시 백그라운드 프리워밍)
-    market_caps = _get_sp500_market_caps(tickers)
-
     result = []
-    for ticker in tickers:
+    multi = len(selected_tickers) > 1
+    for ticker in selected_tickers:
         try:
-            ticker_data = data[ticker]
+            ticker_data = data[ticker] if multi else data
             if ticker_data is None or ticker_data.empty:
                 continue
             closes = ticker_data["Close"].dropna()
