@@ -466,18 +466,29 @@ const LIST_LIMIT = 10;
 let listHasMore = false;
 
 // ── Manual report generation ────────────────────────────────────────────────
+function showGeneratingState() {
+    const btn = document.getElementById('btn-generate');
+    const status = document.getElementById('generate-status');
+    if (!btn || !status) return;
+    document.getElementById('empty-state').classList.remove('d-none');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>생성 중...';
+    status.classList.remove('d-none', 'text-success', 'text-danger');
+    status.classList.add('text-muted');
+    status.textContent = '뉴스 수집 및 분석 중입니다. 1~2분 소요됩니다...';
+}
+
 async function generateReport() {
     const btn = document.getElementById('btn-generate');
     const status = document.getElementById('generate-status');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>생성 중...';
-    status.classList.remove('d-none');
-    status.textContent = '뉴스 수집 및 분석 중입니다. 1~2분 소요됩니다...';
+    localStorage.setItem('news_generating', Date.now().toString());
+    showGeneratingState();
 
     try {
         const headers = getAuthHeaders();
         if (!headers) return;
         const res = await fetch('/api/news/generate', { method: 'POST', headers });
+        localStorage.removeItem('news_generating');
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || `HTTP ${res.status}`);
@@ -491,6 +502,7 @@ async function generateReport() {
             loadReportsList();
         }, 1000);
     } catch (e) {
+        localStorage.removeItem('news_generating');
         status.textContent = '생성 실패: ' + e.message;
         status.classList.remove('text-muted');
         status.classList.add('text-danger');
@@ -678,6 +690,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateNavButtons();
     document.getElementById('loading-overlay').style.display = 'none';
     document.getElementById('main-content').style.display = 'block';
+
+    // 생성 중 상태 복원 (F5 대응, 3분 이내면 유지)
+    const genStarted = localStorage.getItem('news_generating');
+    if (genStarted && (Date.now() - parseInt(genStarted)) < 180000) {
+        showGeneratingState();
+        // 5초마다 리포트 완료 여부 폴링
+        const pollId = setInterval(async () => {
+            try {
+                const headers = getAuthHeaders();
+                if (!headers) return;
+                const res = await fetch('/api/news/latest', { headers });
+                if (res.ok) {
+                    clearInterval(pollId);
+                    localStorage.removeItem('news_generating');
+                    document.getElementById('empty-state').classList.add('d-none');
+                    loadReport();
+                    loadReportsList();
+                }
+            } catch(e) { /* 계속 폴링 */ }
+        }, 5000);
+    } else if (genStarted) {
+        localStorage.removeItem('news_generating');
+    }
 });
 </script>
 </body>
