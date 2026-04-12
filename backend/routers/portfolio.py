@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from scheduler import get_portfolio_cache, sync_portfolio
 
@@ -21,8 +21,8 @@ class AssetOut(BaseModel):
     signed_change_price: float = 0
     signed_change_rate: float = 0
     currency: str = "KRW"
-    avg_price_usd: float = None
-    current_price_usd: float = None
+    avg_price_usd: Optional[float] = None
+    current_price_usd: Optional[float] = None
 
 
 class PortfolioOut(BaseModel):
