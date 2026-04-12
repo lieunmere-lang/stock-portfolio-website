@@ -910,6 +910,7 @@ async function loadBeta() {
 // ── Main load ─────────────────────────────────────────────────────────────────
 async function loadDashboard() {
     try {
+        const flashSnap = snapshotFlashTargets();
         const [portfolio, analytics] = await Promise.all([
             apiFetch('/api/portfolio'),
             apiFetch('/api/analytics/summary'),
@@ -946,6 +947,7 @@ async function loadDashboard() {
 
         // 베타는 느리므로 비동기 로드
         loadBeta();
+        applyFlash(flashSnap);
     } catch (e) {
         if (e.message === 'Unauthenticated' || e.message === 'Unauthorized') return;
         document.getElementById('skeleton-overlay').classList.add('d-none');
