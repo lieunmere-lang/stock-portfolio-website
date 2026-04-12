@@ -77,6 +77,8 @@ def fetch_upbit_assets() -> List[Dict[str, Any]]:
                 "quantity": float(asset["balance"]),
                 "avg_price": float(asset["avg_buy_price"]),
                 "current_price": float(price_info["trade_price"]),
+                "signed_change_price": float(price_info["signed_change_price"]),
+                "signed_change_rate": float(price_info["signed_change_rate"]),
             }
         )
 
@@ -98,6 +100,8 @@ def fetch_upbit_assets() -> List[Dict[str, Any]]:
                 "quantity": quantity,
                 "avg_price": avg_price,
                 "current_price": float(price_info["trade_price"]),
+                "signed_change_price": float(price_info["signed_change_price"]),
+                "signed_change_rate": float(price_info["signed_change_rate"]),
             }
         )
 
