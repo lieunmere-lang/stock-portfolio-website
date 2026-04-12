@@ -630,11 +630,12 @@ function renderHoldingsTable(assets) {
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
         tr.addEventListener('click', () => {
-            window.location.href = `/detail.html?ticker=${encodeURIComponent(a.ticker)}`;
+            const type = a.asset_type === 'stock' ? 'stock' : 'coin';
+            window.location.href = `/detail.html?type=${type}&ticker=${encodeURIComponent(a.ticker)}`;
         });
         tr.innerHTML = `
             <td>
-                <div class="fw-semibold">${a.name}</div>
+                <div class="fw-semibold">${a.name}${a.asset_type === 'stock' ? ' <span class="badge bg-primary-subtle text-primary" style="font-size:.6rem;">US</span>' : ''}</div>
                 <div class="text-muted" style="font-size:.72rem;">${a.ticker}</div>
             </td>
             <td class="num ${dailyCls}" data-flash="${tk}:daily">
