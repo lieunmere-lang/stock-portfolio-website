@@ -521,16 +521,21 @@ async function apiFetch(url) {
 // ── Rendering ─────────────────────────────────────────────────────────────────
 function renderSummaryCards(portfolio, analytics) {
     // 총 평가금액
-    document.getElementById('card-total-value').textContent = KRW(portfolio.total_value);
+    const totalValEl = document.getElementById('card-total-value');
+    totalValEl.setAttribute('data-flash', 'total-value');
+    totalValEl.textContent = KRW(portfolio.total_value);
 
     // 총 손익
     const pl = portfolio.total_profit_loss;
     const plr = portfolio.total_profit_loss_rate;
     const plEl = document.getElementById('card-total-pl');
+    plEl.setAttribute('data-flash', 'total-pl');
     plEl.textContent = KRW(pl);
     plEl.className = `fw-bold fs-4 mt-1 ${pnlClass(pl)}`;
-    document.getElementById('card-total-plr').textContent = PCT(plr);
-    document.getElementById('card-total-plr').className = `fw-semibold ${pnlClass(plr)}`;
+    const plrEl = document.getElementById('card-total-plr');
+    plrEl.setAttribute('data-flash', 'total-plr');
+    plrEl.textContent = PCT(plr);
+    plrEl.className = `fw-semibold ${pnlClass(plr)}`;
     const plIcon = document.getElementById('card-pl-icon');
     plIcon.className = `icon-badge ${pl >= 0 ? 'bg-up-soft' : 'bg-down-soft'}`;
     plIcon.innerHTML = `<i class="bi ${pl >= 0 ? 'bi-graph-up-arrow' : 'bi-graph-down-arrow'} fs-5"></i>`;
@@ -538,6 +543,7 @@ function renderSummaryCards(portfolio, analytics) {
     // 오늘의 손익
     const tdPl = portfolio.today_profit_loss;
     const tdEl = document.getElementById('card-today-pl');
+    tdEl.setAttribute('data-flash', 'today-pl');
     if (tdPl != null) {
         tdEl.textContent = KRW(tdPl);
         tdEl.className = `fw-bold fs-4 mt-1 ${pnlClass(tdPl)}`;
@@ -549,7 +555,9 @@ function renderSummaryCards(portfolio, analytics) {
     }
 
     // 투자 원금
-    document.getElementById('card-investment').textContent = KRW(portfolio.total_investment);
+    const investEl = document.getElementById('card-investment');
+    investEl.setAttribute('data-flash', 'investment');
+    investEl.textContent = KRW(portfolio.total_investment);
 }
 
 function renderPeriodReturns(pr) {
@@ -563,23 +571,27 @@ function renderPeriodReturns(pr) {
         container.innerHTML += `
             <div class="d-flex flex-column align-items-center gap-1">
                 <span class="text-muted" style="font-size:.68rem;font-weight:600;">${label}</span>
-                <span class="period-pill ${cls}">${txt}</span>
+                <span class="period-pill ${cls}" data-flash="return-${key}">${txt}</span>
             </div>`;
     }
 }
 
 function renderRiskMetrics(risk) {
     const mdd = risk.mdd;
-    document.getElementById('risk-mdd').textContent = mdd != null ? PCT(mdd, 2) : '데이터 부족';
-    document.getElementById('risk-mdd').className = `fw-bold fs-5 mt-1 ${mdd != null ? 'text-down' : 'text-muted'}`;
+    const mddEl = document.getElementById('risk-mdd');
+    mddEl.setAttribute('data-flash', 'risk-mdd');
+    mddEl.textContent = mdd != null ? PCT(mdd, 2) : '데이터 부족';
+    mddEl.className = `fw-bold fs-5 mt-1 ${mdd != null ? 'text-down' : 'text-muted'}`;
 
     const vol = risk.volatility;
     const volEl = document.getElementById('risk-vol');
+    volEl.setAttribute('data-flash', 'risk-vol');
     volEl.textContent = vol != null ? PCT(vol, 2) : '데이터 부족';
     volEl.className = `fw-bold fs-5 mt-1 ${vol != null ? '' : 'text-muted'}`;
 
     const sharpe = risk.sharpe;
     const sharpeEl = document.getElementById('risk-sharpe');
+    sharpeEl.setAttribute('data-flash', 'risk-sharpe');
     if (sharpe != null) {
         sharpeEl.textContent = sharpe.toFixed(2);
         sharpeEl.className = `fw-bold fs-5 mt-1 ${sharpe >= 1 ? 'text-up' : sharpe >= 0 ? '' : 'text-down'}`;
@@ -590,6 +602,7 @@ function renderRiskMetrics(risk) {
 
     const hhi = risk.hhi;
     const hhiEl = document.getElementById('risk-hhi');
+    hhiEl.setAttribute('data-flash', 'risk-hhi');
     hhiEl.textContent = hhi != null ? Math.round(hhi).toLocaleString() : '—';
     const hhiPct = Math.min((hhi / 10000) * 100, 100);
     const hhiColor = hhi > 2500 ? '#dc2626' : hhi > 1500 ? '#f59e0b' : '#16a34a';
@@ -619,6 +632,7 @@ function renderHoldingsTable(assets) {
             ? holdDays >= 30 ? `${Math.floor(holdDays/30)}개월` : `${holdDays}일`
             : '—';
 
+        const tk = a.ticker;
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
         tr.addEventListener('click', () => {
@@ -630,15 +644,15 @@ function renderHoldingsTable(assets) {
                 <div class="text-muted" style="font-size:.72rem;">${a.ticker}</div>
             </td>
             <td class="num">${KRW(a.avg_price)}</td>
-            <td class="num">${KRW(a.current_price)}</td>
+            <td class="num" data-flash="${tk}:price">${KRW(a.current_price)}</td>
             <td class="num">${NUM(a.quantity)}</td>
             <td class="num">${KRW(purchase)}</td>
-            <td class="num fw-semibold">${KRW(a.total_value)}</td>
-            <td class="num ${cls}">${KRW(pnl)}</td>
-            <td class="num ${cls} fw-semibold">${PCT(a.profit_loss_rate)}</td>
+            <td class="num fw-semibold" data-flash="${tk}:value">${KRW(a.total_value)}</td>
+            <td class="num ${cls}" data-flash="${tk}:pnl">${KRW(pnl)}</td>
+            <td class="num ${cls} fw-semibold" data-flash="${tk}:pnlr">${PCT(a.profit_loss_rate)}</td>
             <td class="num">
                 <div class="d-flex align-items-center gap-1 justify-content-end">
-                    <span>${weight}%</span>
+                    <span data-flash="${tk}:weight">${weight}%</span>
                     <div style="width:40px;height:5px;border-radius:3px;background:#e2e8f0;overflow:hidden;">
                         <div style="width:${weight}%;height:100%;background:#3b82f6;border-radius:3px;"></div>
                     </div>
@@ -717,14 +731,14 @@ function renderTop5(top5) {
                 <div class="flex-grow-1">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="fw-semibold" style="font-size:.82rem;">${item.ticker.replace('KRW-','')}</span>
-                        <span class="${cls} fw-semibold" style="font-size:.8rem;">${KRW(item.profit_loss)}</span>
+                        <span class="${cls} fw-semibold" style="font-size:.8rem;" data-flash="top5-${item.ticker}:pl">${KRW(item.profit_loss)}</span>
                     </div>
                     <div style="height:4px;border-radius:2px;background:#e2e8f0;margin-top:4px;overflow:hidden;">
                         <div style="width:${barW}%;height:100%;background:${barColor};border-radius:2px;"></div>
                     </div>
                     <div class="d-flex justify-content-between">
                         <span class="text-muted" style="font-size:.68rem;">비중 ${(item.weight*100).toFixed(1)}%</span>
-                        <span class="${cls}" style="font-size:.68rem;">${PCT(item.profit_loss_rate)}</span>
+                        <span class="${cls}" style="font-size:.68rem;" data-flash="top5-${item.ticker}:plr">${PCT(item.profit_loss_rate)}</span>
                     </div>
                 </div>
             </div>`;
@@ -894,6 +908,7 @@ async function loadBeta() {
     try {
         const data = await apiFetch('/api/analytics/beta');
         const betaEl = document.getElementById('card-beta');
+        betaEl.setAttribute('data-flash', 'beta');
         if (data.beta != null) {
             betaEl.textContent = data.beta.toFixed(2);
             betaEl.className = 'fw-bold fs-4 mt-1';
@@ -902,8 +917,10 @@ async function loadBeta() {
             betaEl.className = 'fw-bold fs-4 mt-1 text-muted';
         }
     } catch (e) {
-        document.getElementById('card-beta').textContent = '오류';
-        document.getElementById('card-beta').className = 'fw-bold fs-4 mt-1 text-muted';
+        const betaEl = document.getElementById('card-beta');
+        betaEl.setAttribute('data-flash', 'beta');
+        betaEl.textContent = '오류';
+        betaEl.className = 'fw-bold fs-4 mt-1 text-muted';
     }
 }
 
