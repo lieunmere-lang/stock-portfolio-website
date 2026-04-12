@@ -10,3 +10,4 @@ yfinance
 feedparser
 httpx
 anthropic
+beautifulsoup4
