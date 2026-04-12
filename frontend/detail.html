@@ -98,6 +98,20 @@
             margin-top: auto;
         }
         .sidebar-link .badge { margin-left: auto; }
+        .sidebar-stock {
+            display: flex; align-items: center; gap: .5rem;
+            padding: .4rem 1rem .4rem 1.8rem;
+            color: #64748b; text-decoration: none;
+            font-size: .8rem;
+            border-left: 3px solid transparent;
+            transition: background .15s;
+        }
+        .sidebar-stock:hover { background: #f8fafc; color: #0f172a; }
+        .sidebar-stock.active { background: #eff6ff; color: #1d4ed8; border-left-color: #1d4ed8; font-weight: 600; }
+        .sidebar-stock .stock-ticker { font-weight: 600; color: #334155; min-width: 3rem; }
+        .sidebar-stock.active .stock-ticker { color: #1d4ed8; }
+        .sidebar-stock .stock-name { color: #94a3b8; font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sidebar-stock .stock-pnl { margin-left: auto; font-size: .72rem; font-weight: 600; }
     </style>
 </head>
 <body class="has-sidebar">
@@ -120,12 +134,10 @@
                 data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close"></button>
     </div>
     <nav class="offcanvas-body d-flex flex-column p-0">
-        <div class="sidebar-group-label">대시보드</div>
-        <a href="/#summary"    class="sidebar-link" data-nav="summary">개요</a>
-        <a href="/#holdings"   class="sidebar-link" data-nav="holdings">보유현황</a>
-        <a href="/#returns"    class="sidebar-link" data-nav="returns">수익률 분석</a>
-        <a href="/#allocation" class="sidebar-link" data-nav="allocation">자산배분</a>
-        <a href="/#risk"       class="sidebar-link" data-nav="risk">리스크 지표</a>
+        <a href="/" class="sidebar-link"><i class="bi bi-speedometer2 me-2"></i>대시보드</a>
+
+        <div class="sidebar-group-label">개인종목</div>
+        <div id="sidebar-assets"></div>
 
         <div class="sidebar-group-label">분석</div>
         <span class="sidebar-link disabled">뉴스 리포트 <span class="badge text-bg-light">준비중</span></span>
@@ -231,13 +243,13 @@
 
 <script>
 // ── Auth ──────────────────────────────────────────────────────────────────────
-function getToken() { return localStorage.getItem('token'); }
+function getToken() { return localStorage.getItem('portfolio_token'); }
 function getAuthHeaders() {
     const t = getToken();
     if (!t) { window.location.href = '/login.html'; return null; }
     return { 'Authorization': `Bearer ${t}`, 'Content-Type': 'application/json' };
 }
-function logout() { localStorage.removeItem('token'); window.location.href = '/login.html'; }
+function logout() { localStorage.removeItem('portfolio_token'); window.location.href = '/login.html'; }
 
 async function apiFetch(url) {
     const headers = getAuthHeaders();
@@ -645,6 +657,26 @@ async function renderPriceChart(days) {
     }
 }
 
+// ── Sidebar asset list ────────────────────────────────────────────────────────
+function renderSidebarAssets(assets) {
+    const wrap = document.getElementById('sidebar-assets');
+    const filtered = assets.filter(a => (a.quantity * a.avg_price) >= 10000);
+    if (!filtered.length) { wrap.innerHTML = ''; return; }
+    wrap.innerHTML = filtered.map(a => {
+        const type = a.asset_type === 'stock' ? 'stock' : 'coin';
+        const active = a.ticker === ticker ? ' active' : '';
+        const plr = a.profit_loss_rate;
+        const cls = plr >= 0 ? 'text-up' : 'text-down';
+        const sign = plr >= 0 ? '+' : '';
+        const label = a.asset_type === 'stock' ? a.ticker : a.ticker.replace('KRW-', '');
+        return `<a href="/detail.html?type=${type}&ticker=${encodeURIComponent(a.ticker)}" class="sidebar-stock${active}">
+            <span class="stock-ticker">${label}</span>
+            <span class="stock-name">${a.name}</span>
+            <span class="stock-pnl ${cls}">${sign}${(plr * 100).toFixed(1)}%</span>
+        </a>`;
+    }).join('');
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function loadDetail() {
     if (!ticker) { window.location.href = '/'; return; }
@@ -668,6 +700,7 @@ async function loadDetail() {
                      </a>`;
             }
 
+            renderSidebarAssets(portfolio.assets || []);
             const myAsset = (portfolio.assets || []).find(a => a.ticker === ticker);
             renderHolding(myAsset, portfolio.total_value);
 
@@ -682,6 +715,7 @@ async function loadDetail() {
             renderMarketGrid(detail);
             renderLinks(detail);
 
+            renderSidebarAssets(portfolio.assets || []);
             const myAsset = (portfolio.assets || []).find(a => a.ticker === ticker);
             renderHolding(myAsset, portfolio.total_value);
 

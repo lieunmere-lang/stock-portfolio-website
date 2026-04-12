@@ -67,6 +67,12 @@
             padding: .6rem .75rem;
         }
         .holdings-table td { vertical-align: middle; padding: .65rem .75rem; border-color: #f1f5f9; }
+        .sortable { cursor: pointer; user-select: none; position: relative; padding-right: 1.2rem !important; }
+        .sortable:hover { color: #334155; }
+        .sortable::after { content: '⇅'; position: absolute; right: .3rem; top: 50%; transform: translateY(-50%); font-size: .6rem; color: #cbd5e1; }
+        .sortable.sort-asc::after { content: '▲'; color: #3b82f6; }
+        .sortable.sort-desc::after { content: '▼'; color: #3b82f6; }
+        .sortable.sort-active { color: #1e40af; }
         .holdings-table tbody tr:hover td { background: #f8fafc; }
         .num { text-align: right; font-variant-numeric: tabular-nums; }
 
@@ -142,6 +148,18 @@
             margin-top: auto;
         }
         .sidebar-link .badge { margin-left: auto; }
+        .sidebar-stock {
+            display: flex; align-items: center; gap: .5rem;
+            padding: .4rem 1rem .4rem 1.8rem;
+            color: #64748b; text-decoration: none;
+            font-size: .8rem;
+            border-left: 3px solid transparent;
+            transition: background .15s;
+        }
+        .sidebar-stock:hover { background: #f8fafc; color: #0f172a; }
+        .sidebar-stock .stock-ticker { font-weight: 600; color: #334155; min-width: 3rem; }
+        .sidebar-stock .stock-name { color: #94a3b8; font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sidebar-stock .stock-pnl { margin-left: auto; font-size: .72rem; font-weight: 600; }
 
         /* Flash highlight on data change */
         @keyframes flash-fade {
@@ -165,13 +183,10 @@
                 data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close"></button>
     </div>
     <nav class="offcanvas-body d-flex flex-column p-0">
-        <div class="sidebar-group-label">대시보드</div>
-        <a href="/#summary"    class="sidebar-link" data-nav="summary">개요</a>
-        <a href="/#holdings"   class="sidebar-link" data-nav="holdings">보유현황</a>
-        <a href="/#returns"    class="sidebar-link" data-nav="returns">수익률 분석</a>
-        <a href="/#allocation" class="sidebar-link" data-nav="allocation">자산배분</a>
-        <a href="/#risk"       class="sidebar-link" data-nav="risk">리스크 지표</a>
-        <a href="#earnings" class="sidebar-link" data-nav="earnings">실적 발표</a>
+        <a href="/" class="sidebar-link active"><i class="bi bi-speedometer2 me-2"></i>대시보드</a>
+
+        <div class="sidebar-group-label">개인종목</div>
+        <div id="sidebar-assets"></div>
 
         <div class="sidebar-group-label">분석</div>
         <span class="sidebar-link disabled">뉴스 리포트 <span class="badge text-bg-light">준비중</span></span>
@@ -229,27 +244,26 @@
 
     <!-- ① 요약 카드 5개 -->
     <div id="summary" class="row g-3 mb-4">
+        <!-- 투자 원금 -->
+        <div class="col-6 col-md-4 col-xl">
+            <div class="summary-card p-4 h-100 bg-white">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="icon-badge" style="background:rgba(245,158,11,.12);color:#f59e0b;"><i class="bi bi-coin fs-5"></i></div>
+                    <div>
+                        <div class="text-muted" style="font-size:.75rem;font-weight:600;">총투자원금</div>
+                        <div id="card-investment" class="fw-bold fs-4 mt-1">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <!-- 총 평가금액 -->
         <div class="col-6 col-md-4 col-xl">
             <div class="summary-card p-4 h-100 bg-white">
                 <div class="d-flex align-items-start gap-3">
                     <div class="icon-badge" style="background:rgba(59,130,246,.12);color:#3b82f6;"><i class="bi bi-wallet2 fs-5"></i></div>
                     <div>
-                        <div class="text-muted" style="font-size:.75rem;font-weight:600;">총 평가금액</div>
+                        <div class="text-muted" style="font-size:.75rem;font-weight:600;">총투자금액</div>
                         <div id="card-total-value" class="fw-bold fs-4 mt-1">—</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- 총 손익 -->
-        <div class="col-6 col-md-4 col-xl">
-            <div class="summary-card p-4 h-100 bg-white">
-                <div class="d-flex align-items-start gap-3">
-                    <div id="card-pl-icon" class="icon-badge" style="background:rgba(99,102,241,.12);color:#6366f1;"><i class="bi bi-graph-up fs-5"></i></div>
-                    <div>
-                        <div class="text-muted" style="font-size:.75rem;font-weight:600;">총 손익</div>
-                        <div id="card-total-pl" class="fw-bold fs-4 mt-1">—</div>
-                        <div id="card-total-plr" class="fw-semibold" style="font-size:.8rem;"></div>
                     </div>
                 </div>
             </div>
@@ -266,14 +280,15 @@
                 </div>
             </div>
         </div>
-        <!-- 투자 원금 -->
+        <!-- 총 손익 -->
         <div class="col-6 col-md-6 col-xl">
             <div class="summary-card p-4 h-100 bg-white">
                 <div class="d-flex align-items-start gap-3">
-                    <div class="icon-badge" style="background:rgba(245,158,11,.12);color:#f59e0b;"><i class="bi bi-coin fs-5"></i></div>
+                    <div id="card-pl-icon" class="icon-badge" style="background:rgba(99,102,241,.12);color:#6366f1;"><i class="bi bi-graph-up fs-5"></i></div>
                     <div>
-                        <div class="text-muted" style="font-size:.75rem;font-weight:600;">투자 원금</div>
-                        <div id="card-investment" class="fw-bold fs-4 mt-1">—</div>
+                        <div class="text-muted" style="font-size:.75rem;font-weight:600;">총 손익</div>
+                        <div id="card-total-pl" class="fw-bold fs-4 mt-1">—</div>
+                        <div id="card-total-plr" class="fw-semibold" style="font-size:.8rem;"></div>
                     </div>
                 </div>
             </div>
@@ -364,17 +379,17 @@
         <div class="table-responsive">
             <table class="table holdings-table mb-0">
                 <thead>
-                    <tr>
-                        <th>종목</th>
-                        <th class="num">일일변동</th>
-                        <th class="num">매수가</th>
-                        <th class="num">현재가</th>
-                        <th class="num">수량</th>
-                        <th class="num">매수금액</th>
-                        <th class="num">평가금액</th>
-                        <th class="num">손익</th>
-                        <th class="num">수익률</th>
-                        <th class="num">비중</th>
+                    <tr id="holdings-head">
+                        <th data-sort="name" class="sortable">종목</th>
+                        <th data-sort="avg_price" class="num sortable">매수가</th>
+                        <th data-sort="current_price" class="num sortable">현재가</th>
+                        <th data-sort="quantity" class="num sortable">수량</th>
+                        <th data-sort="purchase" class="num sortable">매수금액</th>
+                        <th data-sort="total_value" class="num sortable sort-active sort-desc">평가금액</th>
+                        <th data-sort="profit_loss" class="num sortable">손익</th>
+                        <th data-sort="profit_loss_rate" class="num sortable">수익률</th>
+                        <th data-sort="weight" class="num sortable">비중</th>
+                        <th data-sort="signed_change_rate" class="num sortable">일일변동</th>
                     </tr>
                 </thead>
                 <tbody id="holdings-tbody"></tbody>
@@ -538,6 +553,24 @@ async function apiFetch(url) {
     return res.json();
 }
 
+// ── Sidebar asset list ────────────────────────────────────────────────────────
+function renderSidebarAssets(assets) {
+    const wrap = document.getElementById('sidebar-assets');
+    if (!assets.length) { wrap.innerHTML = '<span class="sidebar-stock" style="color:#cbd5e1;padding-left:1.8rem;font-size:.75rem;">종목 없음</span>'; return; }
+    wrap.innerHTML = assets.map(a => {
+        const type = a.asset_type === 'stock' ? 'stock' : 'coin';
+        const plr = a.profit_loss_rate;
+        const cls = plr >= 0 ? 'text-up' : 'text-down';
+        const sign = plr >= 0 ? '+' : '';
+        const label = a.asset_type === 'stock' ? a.ticker : a.ticker.replace('KRW-', '');
+        return `<a href="/detail.html?type=${type}&ticker=${encodeURIComponent(a.ticker)}" class="sidebar-stock">
+            <span class="stock-ticker">${label}</span>
+            <span class="stock-name">${a.name}</span>
+            <span class="stock-pnl ${cls}">${sign}${(plr * 100).toFixed(1)}%</span>
+        </a>`;
+    }).join('');
+}
+
 // ── Rendering ─────────────────────────────────────────────────────────────────
 function renderSummaryCards(portfolio, analytics) {
     // 총 평가금액
@@ -632,15 +665,45 @@ function renderRiskMetrics(risk) {
     hhiEl.style.color = hhiColor;
 }
 
+// ── Holdings table with sort ──────────────────────────────────────────────────
+let holdingsSortKey = 'total_value';
+let holdingsSortAsc = false;
+let holdingsAssets = [];
+
+function getSortValue(a, key, total) {
+    switch (key) {
+        case 'name': return a.name.toLowerCase();
+        case 'signed_change_rate': return a.signed_change_rate || 0;
+        case 'avg_price': return a.avg_price;
+        case 'current_price': return a.current_price;
+        case 'quantity': return a.quantity;
+        case 'purchase': return a.quantity * a.avg_price;
+        case 'total_value': return a.total_value;
+        case 'profit_loss': return a.profit_loss;
+        case 'profit_loss_rate': return a.profit_loss_rate;
+        case 'weight': return a.total_value / (total || 1);
+        default: return 0;
+    }
+}
+
 function renderHoldingsTable(assets) {
-    const total = assets.reduce((s, a) => s + a.total_value, 0) || 1;
+    if (assets) holdingsAssets = assets;
+    const total = holdingsAssets.reduce((s, a) => s + a.total_value, 0) || 1;
     const tbody = document.getElementById('holdings-tbody');
     tbody.innerHTML = '';
-    if (!assets.length) {
+    if (!holdingsAssets.length) {
         tbody.innerHTML = '<tr><td colspan="10" class="text-center py-5 text-muted">보유 종목 없음</td></tr>';
         return;
     }
-    assets.forEach(a => {
+
+    const sorted = [...holdingsAssets].sort((a, b) => {
+        const va = getSortValue(a, holdingsSortKey, total);
+        const vb = getSortValue(b, holdingsSortKey, total);
+        if (typeof va === 'string') return holdingsSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+        return holdingsSortAsc ? va - vb : vb - va;
+    });
+
+    sorted.forEach(a => {
         const pnl = a.profit_loss;
         const cls = pnlClass(pnl);
         const weight = (a.total_value / total * 100).toFixed(1);
@@ -658,10 +721,6 @@ function renderHoldingsTable(assets) {
                 <div class="fw-semibold">${a.name}${a.asset_type === 'stock' ? ' <span class="badge bg-primary-subtle text-primary" style="font-size:.6rem;">US</span>' : ''}</div>
                 <div class="text-muted" style="font-size:.72rem;">${a.ticker}</div>
             </td>
-            <td class="num ${dailyCls}" data-flash="${tk}:daily">
-                <div>${KRW(a.signed_change_price)}</div>
-                <div class="text-muted" style="font-size:.72rem;">${PCT(a.signed_change_rate)}</div>
-            </td>
             <td class="num">${KRW(a.avg_price)}</td>
             <td class="num" data-flash="${tk}:price">${KRW(a.current_price)}</td>
             <td class="num">${NUM(a.quantity)}</td>
@@ -677,10 +736,36 @@ function renderHoldingsTable(assets) {
                     </div>
                 </div>
             </td>
+            <td class="num ${dailyCls}" data-flash="${tk}:daily">
+                <div>${KRW(a.signed_change_price)}</div>
+                <div class="text-muted" style="font-size:.72rem;">${PCT(a.signed_change_rate)}</div>
+            </td>
         `;
         tbody.appendChild(tr);
     });
+
+    // 헤더 정렬 표시 갱신
+    document.querySelectorAll('#holdings-head th.sortable').forEach(th => {
+        th.classList.remove('sort-active', 'sort-asc', 'sort-desc');
+        if (th.dataset.sort === holdingsSortKey) {
+            th.classList.add('sort-active', holdingsSortAsc ? 'sort-asc' : 'sort-desc');
+        }
+    });
 }
+
+// 헤더 클릭 정렬
+document.getElementById('holdings-head').addEventListener('click', e => {
+    const th = e.target.closest('th[data-sort]');
+    if (!th) return;
+    const key = th.dataset.sort;
+    if (holdingsSortKey === key) {
+        holdingsSortAsc = !holdingsSortAsc;
+    } else {
+        holdingsSortKey = key;
+        holdingsSortAsc = key === 'name';
+    }
+    renderHoldingsTable();
+});
 
 function renderAllocationChart(assets) {
     const labels = assets.map(a => a.ticker.replace('KRW-', ''));
@@ -991,7 +1076,11 @@ async function loadDashboard() {
             banner.classList.remove('d-none');
         }
 
+        // 만원 이하 투자금 자산 제외
+        portfolio.assets = portfolio.assets.filter(a => (a.quantity * a.avg_price) >= 10000);
+
         renderSummaryCards(portfolio, analytics);
+        renderSidebarAssets(portfolio.assets);
         renderPeriodReturns(analytics.period_returns);
         renderRiskMetrics(analytics.risk_metrics);
         renderHoldingsTable(portfolio.assets);
@@ -1041,31 +1130,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(loadDashboard, 60_000);
 });
 
-// ── Sidebar scroll-spy + offcanvas auto-close ─────────────────────────────────
+// ── Sidebar offcanvas auto-close (모바일) ─────────────────────────────────
 (function initSidebar() {
-    const sectionIds = ['summary', 'returns', 'risk', 'holdings', 'earnings', 'allocation'];
-    const visible = new Set();
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(e => {
-            if (e.isIntersecting) visible.add(e.target.id);
-            else visible.delete(e.target.id);
-        });
-        // 문서 순서상 마지막으로 교차 중인 섹션을 활성으로 선택
-        // (리스크 지표가 수익률 분석 카드 안에 중첩되어 있어 이 처리가 필요하다)
-        const active = sectionIds.filter(id => visible.has(id)).pop();
-        if (!active) return;
-        document.querySelectorAll('#sidebar .sidebar-link').forEach(el => el.classList.remove('active'));
-        const link = document.querySelector(`#sidebar .sidebar-link[data-nav="${active}"]`);
-        if (link) link.classList.add('active');
-    }, { rootMargin: '-20% 0px -70% 0px' });
-
-    sectionIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) observer.observe(el);
-    });
-
-    // 모바일에서 메뉴 탭 시 offcanvas 자동 닫힘
     const sidebarEl = document.getElementById('sidebar');
     document.querySelectorAll('#sidebar .sidebar-link:not(.disabled)').forEach(link => {
         link.addEventListener('click', () => {
