@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>트레이드 저널 — My Portfolio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        :root {
+            --color-up: #16a34a;
+            --color-down: #dc2626;
+            --color-neutral: #6b7280;
+            --bg-main: #f1f5f9;
+            --card-radius: 0.875rem;
+        }
+        body { background: var(--bg-main); font-family: 'Inter', sans-serif; color: #1e293b; }
+        .navbar { box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+        .section-card {
+            border: none; border-radius: var(--card-radius);
+            box-shadow: 0 1px 4px rgba(0,0,0,.06);
+        }
+        .section-title {
+            font-size: .8rem; font-weight: 600; letter-spacing: .06em;
+            text-transform: uppercase; color: #64748b; margin-bottom: 1rem;
+        }
+        .text-up   { color: var(--color-up) !important; }
+        .text-down { color: var(--color-down) !important; }
+        .text-neutral { color: var(--color-neutral) !important; }
+        .summary-card {
+            border: none; border-radius: var(--card-radius);
+            box-shadow: 0 1px 4px rgba(0,0,0,.06);
+        }
+        .icon-badge {
+            width: 44px; height: 44px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+
+        /* Sidebar */
+        html { scroll-behavior: smooth; }
+        @media (min-width: 992px) {
+            #sidebar {
+                position: fixed; top: 0; left: 0;
+                width: 240px; height: 100vh;
+                border-right: 1px solid #e2e8f0;
+                background: #fff;
+                display: flex; flex-direction: column;
+                z-index: 20;
+            }
+            body.has-sidebar > nav.navbar,
+            body.has-sidebar > #main-content,
+            body.has-sidebar > #loading-overlay { margin-left: 240px; }
+        }
+        .sidebar-link {
+            display: flex; align-items: center; gap: .6rem;
+            padding: .55rem 1rem;
+            color: #475569; text-decoration: none;
+            font-size: .88rem;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-link:hover:not(.disabled) { background: #f8fafc; color: #0f172a; }
+        .sidebar-link.active {
+            background: #eff6ff; color: #1d4ed8;
+            border-left-color: #1d4ed8; font-weight: 600;
+        }
+        .sidebar-link.disabled { color: #cbd5e1; cursor: not-allowed; }
+        .sidebar-group-label {
+            font-size: .7rem; font-weight: 700; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: .08em;
+            padding: 1rem 1rem .4rem;
+        }
+        .sidebar-footer {
+            padding: 1rem; border-top: 1px solid #e2e8f0;
+            margin-top: auto;
+        }
+        .sidebar-link .badge { margin-left: auto; }
+        .sidebar-stock {
+            display: flex; align-items: center; gap: .5rem;
+            padding: .4rem 1rem .4rem 1.8rem;
+            color: #64748b; text-decoration: none;
+            font-size: .8rem;
+            border-left: 3px solid transparent;
+            transition: background .15s;
+        }
+        .sidebar-stock:hover { background: #f8fafc; color: #0f172a; }
+        .sidebar-stock .stock-ticker { font-weight: 600; color: #334155; min-width: 3rem; }
+        .sidebar-stock .stock-name { color: #94a3b8; font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sidebar-stock .stock-pnl { margin-left: auto; font-size: .72rem; font-weight: 600; }
+
+        /* Journal-specific */
+        .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .trade-table th {
+            font-size: .72rem; font-weight: 600; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: .05em;
+            border-bottom: 1px solid #e2e8f0; background: #f8fafc;
+            padding: .6rem .75rem;
+        }
+        .trade-table td { vertical-align: middle; padding: .55rem .75rem; border-color: #f1f5f9; font-size: .85rem; }
+        .trade-table tbody tr:hover td { background: #f8fafc; }
+        .side-buy { color: var(--color-up); font-weight: 600; }
+        .side-sell { color: var(--color-down); font-weight: 600; }
+        .summary-ticker-table th {
+            font-size: .72rem; font-weight: 600; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: .05em;
+            border-bottom: 1px solid #e2e8f0; background: #f8fafc;
+            padding: .5rem .65rem;
+        }
+        .summary-ticker-table td { padding: .5rem .65rem; border-color: #f1f5f9; font-size: .82rem; }
+
+        #loading-overlay {
+            position: fixed; inset: 0; background: var(--bg-main); z-index: 100;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .filter-bar { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+        .filter-bar select, .filter-bar input { font-size: .85rem; }
+    </style>
+</head>
+<body class="has-sidebar">
+
+<!-- Sidebar -->
+<aside id="sidebar" class="offcanvas-lg offcanvas-start" tabindex="-1">
+    <div class="offcanvas-header border-bottom">
+        <span class="fw-bold"><i class="bi bi-bar-chart-line-fill text-primary"></i> My Portfolio</span>
+        <button type="button" class="btn-close d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#sidebar"></button>
+    </div>
+    <nav class="offcanvas-body d-flex flex-column p-0">
+        <a href="/" class="sidebar-link"><i class="bi bi-speedometer2 me-2"></i>대시보드</a>
+
+        <div class="sidebar-group-label">개인종목</div>
+        <div id="sidebar-assets"></div>
+
+        <div class="sidebar-group-label">분석</div>
+        <a href="/news.html" class="sidebar-link"><i class="bi bi-newspaper me-2"></i>뉴스 리포트</a>
+        <a href="/market.html" class="sidebar-link"><i class="bi bi-globe me-2"></i>시장 상황판</a>
+
+        <div class="sidebar-group-label">도구</div>
+        <span class="sidebar-link disabled">가격 알림 <span class="badge text-bg-light">준비중</span></span>
+        <a href="/rebalance.html" class="sidebar-link"><i class="bi bi-sliders me-2"></i>리밸런싱</a>
+        <a href="/journal.html" class="sidebar-link active"><i class="bi bi-journal-text me-2"></i>트레이드 저널</a>
+        <span class="sidebar-link disabled">수익 실현 계산기 <span class="badge text-bg-light">준비중</span></span>
+
+        <div class="sidebar-group-label">기타</div>
+        <span class="sidebar-link disabled">설정 <span class="badge text-bg-light">준비중</span></span>
+
+        <div class="sidebar-footer">
+            <button onclick="logout()" class="btn btn-sm btn-outline-secondary w-100">
+                <i class="bi bi-box-arrow-right"></i> 로그아웃
+            </button>
+        </div>
+    </nav>
+</aside>
+
+<!-- Navbar (mobile) -->
+<nav class="navbar navbar-light bg-white border-bottom px-3 py-2 d-lg-none">
+    <button class="btn btn-sm" type="button"
+            data-bs-toggle="offcanvas" data-bs-target="#sidebar"
+            aria-controls="sidebar" aria-label="메뉴 열기">
+        <i class="bi bi-list fs-4"></i>
+    </button>
+    <span class="fw-semibold fs-6">트레이드 저널</span>
+    <span style="width:32px"></span>
+            <i class="bi bi-list"></i>
+        </button>
+        <span class="navbar-brand mb-0 fw-bold">트레이드 저널</span>
+        <div></div>
+    </div>
+</nav>
+
+<!-- Loading -->
+<div id="loading-overlay">
+    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">로딩중...</span></div>
+</div>
+
+<!-- Main content -->
+<div id="main-content" class="container-fluid py-4" style="max-width:1200px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold mb-0"><i class="bi bi-journal-text me-2 text-primary"></i>트레이드 저널</h4>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-primary" id="btn-sync" title="업비트 거래내역 가져오기">
+                <i class="bi bi-cloud-download me-1"></i>업비트 동기화
+            </button>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modal-add-trade">
+                <i class="bi bi-plus-lg me-1"></i>수동 입력
+            </button>
+        </div>
+    </div>
+
+    <!-- 요약 카드 -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="summary-card card h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="icon-badge bg-primary bg-opacity-10 text-primary"><i class="bi bi-receipt" style="font-size:1.2rem;"></i></div>
+                    <div>
+                        <div class="text-muted" style="font-size:.72rem;">총 거래</div>
+                        <div class="fw-bold" id="stat-count">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="summary-card card h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="icon-badge" style="background:rgba(22,163,74,.1); color:var(--color-up);"><i class="bi bi-arrow-up-circle" style="font-size:1.2rem;"></i></div>
+                    <div>
+                        <div class="text-muted" style="font-size:.72rem;">총 매수</div>
+                        <div class="fw-bold" id="stat-buy">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="summary-card card h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="icon-badge" style="background:rgba(220,38,38,.1); color:var(--color-down);"><i class="bi bi-arrow-down-circle" style="font-size:1.2rem;"></i></div>
+                    <div>
+                        <div class="text-muted" style="font-size:.72rem;">총 매도</div>
+                        <div class="fw-bold" id="stat-sell">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="summary-card card h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="icon-badge" style="background:rgba(139,92,246,.1); color:#8b5cf6;"><i class="bi bi-piggy-bank" style="font-size:1.2rem;"></i></div>
+                    <div>
+                        <div class="text-muted" style="font-size:.72rem;">실현 손익</div>
+                        <div class="fw-bold" id="stat-pnl">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 종목별 요약 -->
+    <div class="section-card card mb-4">
+        <div class="card-body">
+            <div class="section-title">종목별 요약</div>
+            <div class="table-responsive">
+                <table class="table summary-ticker-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>종목</th>
+                            <th class="num">매수 금액</th>
+                            <th class="num">매도 금액</th>
+                            <th class="num">수수료</th>
+                            <th class="num">실현 손익</th>
+                            <th class="num">거래 횟수</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summary-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 필터 -->
+    <div class="section-card card mb-4">
+        <div class="card-body">
+            <div class="section-title">거래 내역</div>
+            <div class="filter-bar mb-3">
+                <select class="form-select form-select-sm" style="width:140px;" id="filter-ticker">
+                    <option value="">전체 종목</option>
+                </select>
+                <select class="form-select form-select-sm" style="width:100px;" id="filter-side">
+                    <option value="">전체</option>
+                    <option value="buy">매수</option>
+                    <option value="sell">매도</option>
+                </select>
+                <select class="form-select form-select-sm" style="width:110px;" id="filter-days">
+                    <option value="">전체 기간</option>
+                    <option value="7">최근 7일</option>
+                    <option value="30">최근 30일</option>
+                    <option value="90" selected>최근 90일</option>
+                    <option value="365">최근 1년</option>
+                </select>
+                <button class="btn btn-sm btn-outline-secondary" id="btn-filter"><i class="bi bi-funnel me-1"></i>조회</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table trade-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>일시</th>
+                            <th>종목</th>
+                            <th>구분</th>
+                            <th class="num">체결 단가</th>
+                            <th class="num">수량</th>
+                            <th class="num">금액</th>
+                            <th class="num">수수료</th>
+                            <th>출처</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="trades-tbody"></tbody>
+                </table>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <small class="text-muted" id="trade-count-info"></small>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" id="btn-prev" disabled><i class="bi bi-chevron-left"></i></button>
+                    <button class="btn btn-sm btn-outline-secondary" id="btn-next" disabled><i class="bi bi-chevron-right"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 수동 입력 모달 -->
+<div class="modal fade" id="modal-add-trade" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">매매 기록 수동 입력</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small">종목 (티커)</label>
+                    <input type="text" class="form-control" id="m-ticker" placeholder="KRW-BTC">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small">이름</label>
+                    <input type="text" class="form-control" id="m-name" placeholder="비트코인">
+                </div>
+                <div class="row mb-3">
+                    <div class="col">
+                        <label class="form-label small">구분</label>
+                        <select class="form-select" id="m-side">
+                            <option value="buy">매수</option>
+                            <option value="sell">매도</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <label class="form-label small">자산 유형</label>
+                        <select class="form-select" id="m-asset-type">
+                            <option value="crypto">코인</option>
+                            <option value="stock">주식</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col">
+                        <label class="form-label small">체결 단가</label>
+                        <input type="number" class="form-control" id="m-price" step="any">
+                    </div>
+                    <div class="col">
+                        <label class="form-label small">수량</label>
+                        <input type="number" class="form-control" id="m-quantity" step="any">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col">
+                        <label class="form-label small">수수료</label>
+                        <input type="number" class="form-control" id="m-fee" value="0" step="any">
+                    </div>
+                    <div class="col">
+                        <label class="form-label small">체결 일시</label>
+                        <input type="datetime-local" class="form-control" id="m-traded-at">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small">메모</label>
+                    <textarea class="form-control" id="m-memo" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="btn-save-trade">저장</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const TOKEN = localStorage.getItem('portfolio_token');
+if (!TOKEN) location.href = '/login.html';
+
+const API = '';
+const headers = { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' };
+
+function logout() { localStorage.removeItem('portfolio_token'); window.location.href = '/login.html'; }
+
+async function apiFetch(url) {
+    const res = await fetch(url, { headers });
+    if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+function renderSidebarAssets(assets) {
+    const wrap = document.getElementById('sidebar-assets');
+    const filtered = assets.filter(a => (a.quantity * a.avg_price) >= 10000);
+    if (!filtered.length) { wrap.innerHTML = ''; return; }
+    wrap.innerHTML = filtered.map(a => {
+        const type = a.asset_type === 'stock' ? 'stock' : 'coin';
+        const plr = a.profit_loss_rate;
+        const cls = plr >= 0 ? 'text-up' : 'text-down';
+        const sign = plr >= 0 ? '+' : '';
+        const label = a.asset_type === 'stock' ? a.ticker : a.ticker.replace('KRW-', '');
+        return `<a href="/detail.html?type=${type}&ticker=${encodeURIComponent(a.ticker)}" class="sidebar-stock">
+            <span class="stock-ticker">${label}</span>
+            <span class="stock-name">${a.name}</span>
+            <span class="stock-pnl ${cls}">${sign}${(plr * 100).toFixed(1)}%</span>
+        </a>`;
+    }).join('');
+}
+
+async function loadSidebarAssets() {
+    try {
+        const data = await apiFetch('/api/portfolio');
+        if (data.assets) renderSidebarAssets(data.assets);
+    } catch(e) {
+        console.error('sidebar assets error:', e);
+    }
+}
+
+let currentOffset = 0;
+const PAGE_SIZE = 50;
+
+// ── 초기 로드 ──
+async function init() {
+    await Promise.all([loadSummary(), loadTrades(), loadSidebarAssets()]);
+    document.getElementById('loading-overlay').style.display = 'none';
+}
+
+// ── 요약 로드 ──
+async function loadSummary() {
+    try {
+        const res = await fetch(`${API}/api/journal/summary`, { headers });
+        const data = await res.json();
+        const t = data.totals || {};
+
+        document.getElementById('stat-count').textContent = (t.trade_count || 0).toLocaleString() + '건';
+        document.getElementById('stat-buy').textContent = formatKRW(t.buy_amount || 0);
+        document.getElementById('stat-sell').textContent = formatKRW(t.sell_amount || 0);
+
+        const pnlEl = document.getElementById('stat-pnl');
+        const pnl = t.realized_pnl || 0;
+        pnlEl.textContent = (pnl >= 0 ? '+' : '') + formatKRW(pnl);
+        pnlEl.className = `fw-bold ${pnl >= 0 ? 'text-up' : 'text-down'}`;
+
+        // 종목별 요약
+        const tbody = document.getElementById('summary-tbody');
+        tbody.innerHTML = '';
+        const filterSelect = document.getElementById('filter-ticker');
+        filterSelect.innerHTML = '<option value="">전체 종목</option>';
+
+        const tickers = data.tickers || [];
+        tickers.forEach(tk => {
+            const s = data.summary[tk];
+            filterSelect.innerHTML += `<option value="${tk}">${s.name} (${tk.replace('KRW-','')})</option>`;
+
+            const pnlClass = s.realized_pnl >= 0 ? 'text-up' : 'text-down';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="fw-semibold">${s.name} <span class="text-muted" style="font-size:.72rem;">${tk.replace('KRW-','')}</span></td>
+                <td class="num">${formatKRW(s.buy_amount)}</td>
+                <td class="num">${formatKRW(s.sell_amount)}</td>
+                <td class="num">${formatKRW(s.fee_total)}</td>
+                <td class="num ${pnlClass} fw-semibold">${s.realized_pnl >= 0 ? '+' : ''}${formatKRW(s.realized_pnl)}</td>
+                <td class="num">${s.trade_count}건</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        console.error('Summary error:', e);
+    }
+}
+
+// ── 거래 내역 로드 ──
+async function loadTrades() {
+    const ticker = document.getElementById('filter-ticker').value;
+    const side = document.getElementById('filter-side').value;
+    const days = document.getElementById('filter-days').value;
+
+    let url = `${API}/api/journal/trades?limit=${PAGE_SIZE}&offset=${currentOffset}`;
+    if (ticker) url += `&ticker=${encodeURIComponent(ticker)}`;
+    if (side) url += `&side=${side}`;
+    if (days) url += `&days=${days}`;
+
+    try {
+        const res = await fetch(url, { headers });
+        const data = await res.json();
+
+        const tbody = document.getElementById('trades-tbody');
+        tbody.innerHTML = '';
+
+        if (!data.items || data.items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">거래 내역이 없습니다. 업비트 동기화 버튼을 눌러 가져오세요.</td></tr>';
+        } else {
+            data.items.forEach(item => {
+                const sideClass = item.side === 'buy' ? 'side-buy' : 'side-sell';
+                const sideLabel = item.side === 'buy' ? '매수' : '매도';
+                const dt = item.traded_at ? new Date(item.traded_at) : null;
+                const dtStr = dt ? `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}` : '—';
+                const sourceLabel = item.source === 'upbit' ? '<span class="badge text-bg-info" style="font-size:.65rem;">업비트</span>' : '<span class="badge text-bg-secondary" style="font-size:.65rem;">수동</span>';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-size:.8rem; white-space:nowrap;">${dtStr}</td>
+                    <td>
+                        <span class="fw-semibold">${item.name || item.ticker}</span>
+                        <span class="text-muted" style="font-size:.72rem;">${item.ticker.replace('KRW-','')}</span>
+                    </td>
+                    <td><span class="${sideClass}">${sideLabel}</span></td>
+                    <td class="num">${item.price ? item.price.toLocaleString('ko-KR', {maximumFractionDigits: 2}) : '—'}</td>
+                    <td class="num">${item.quantity ? item.quantity.toLocaleString('ko-KR', {maximumFractionDigits: 8}) : '—'}</td>
+                    <td class="num">${formatKRW(item.total_amount)}</td>
+                    <td class="num">${item.fee ? formatKRW(item.fee) : '—'}</td>
+                    <td>${sourceLabel}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="deleteTrade(${item.id})" title="삭제">
+                            <i class="bi bi-trash3" style="font-size:.75rem;"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 페이징
+        const total = data.total || 0;
+        document.getElementById('trade-count-info').textContent = `${currentOffset + 1}~${Math.min(currentOffset + PAGE_SIZE, total)} / 총 ${total}건`;
+        document.getElementById('btn-prev').disabled = currentOffset === 0;
+        document.getElementById('btn-next').disabled = currentOffset + PAGE_SIZE >= total;
+    } catch (e) {
+        console.error('Trades error:', e);
+    }
+}
+
+// ── 필터 / 페이징 ──
+document.getElementById('btn-filter').addEventListener('click', () => { currentOffset = 0; loadTrades(); });
+document.getElementById('btn-prev').addEventListener('click', () => { currentOffset = Math.max(0, currentOffset - PAGE_SIZE); loadTrades(); });
+document.getElementById('btn-next').addEventListener('click', () => { currentOffset += PAGE_SIZE; loadTrades(); });
+
+// ── 업비트 동기화 ──
+document.getElementById('btn-sync').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-sync');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>동기화 중...';
+
+    try {
+        const res = await fetch(`${API}/api/journal/sync?days=90`, { method: 'POST', headers });
+        const data = await res.json();
+        if (data.error) {
+            showToast(data.error, 'danger');
+        } else {
+            showToast(`동기화 완료: ${data.imported}건 가져옴 (${data.skipped}건 중복)`);
+            await Promise.all([loadSummary(), loadTrades()]);
+        }
+    } catch (e) {
+        showToast('동기화 실패: ' + e.message, 'danger');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i>업비트 동기화';
+});
+
+// ── 수동 입력 저장 ──
+document.getElementById('btn-save-trade').addEventListener('click', async () => {
+    const data = {
+        ticker: document.getElementById('m-ticker').value.trim(),
+        name: document.getElementById('m-name').value.trim(),
+        side: document.getElementById('m-side').value,
+        price: parseFloat(document.getElementById('m-price').value) || 0,
+        quantity: parseFloat(document.getElementById('m-quantity').value) || 0,
+        fee: parseFloat(document.getElementById('m-fee').value) || 0,
+        asset_type: document.getElementById('m-asset-type').value,
+        traded_at: document.getElementById('m-traded-at').value || new Date().toISOString(),
+        memo: document.getElementById('m-memo').value.trim(),
+    };
+
+    if (!data.ticker || !data.price || !data.quantity) {
+        showToast('종목, 가격, 수량은 필수입니다.', 'warning');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API}/api/journal/trades`, {
+            method: 'POST', headers,
+            body: JSON.stringify(data),
+        });
+        if (res.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('modal-add-trade')).hide();
+            showToast('매매 기록이 추가되었습니다.');
+            await Promise.all([loadSummary(), loadTrades()]);
+        }
+    } catch (e) {
+        showToast('저장 실패: ' + e.message, 'danger');
+    }
+});
+
+// ── 삭제 ──
+async function deleteTrade(id) {
+    if (!confirm('이 거래 기록을 삭제하시겠습니까?')) return;
+    try {
+        await fetch(`${API}/api/journal/trades/${id}`, { method: 'DELETE', headers });
+        await Promise.all([loadSummary(), loadTrades()]);
+    } catch (e) {
+        console.error('Delete error:', e);
+    }
+}
+
+// ── 유틸 ──
+function formatKRW(n) {
+    if (n === null || n === undefined) return '—';
+    const abs = Math.abs(n);
+    if (abs >= 1e8) return (n / 1e8).toFixed(2) + '억';
+    if (abs >= 1e4) return (n / 1e4).toFixed(0) + '만';
+    return Math.round(n).toLocaleString('ko-KR') + '원';
+}
+
+function showToast(msg, type = 'primary') {
+    const el = document.createElement('div');
+    el.className = 'position-fixed bottom-0 end-0 p-3';
+    el.style.zIndex = '1100';
+    el.innerHTML = `<div class="toast show align-items-center text-bg-${type} border-0" role="alert">
+        <div class="d-flex"><div class="toast-body">${msg}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+}
+
+init();
+</script>
+</body>
+</html>

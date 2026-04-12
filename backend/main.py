@@ -14,6 +14,8 @@ from routers.market import router as market_router
 from routers.news import router as news_router
 from routers.stock import router as stock_router
 from routers.portfolio import router as portfolio_router
+from routers.rebalance import router as rebalance_router
+from routers.journal import router as journal_router
 from scheduler import start_scheduler, stop_scheduler
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
@@ -51,6 +53,8 @@ app.include_router(coin_router,      dependencies=[Depends(require_auth)])   # /
 app.include_router(stock_router,     dependencies=[Depends(require_auth)])   # /api/stock/* (인증 필요)
 app.include_router(news_router,      dependencies=[Depends(require_auth)])   # /api/news/* (인증 필요)
 app.include_router(market_router,    dependencies=[Depends(require_auth)])   # /api/market/* (인증 필요)
+app.include_router(rebalance_router, dependencies=[Depends(require_auth)])   # /api/rebalance/* (인증 필요)
+app.include_router(journal_router,   dependencies=[Depends(require_auth)])   # /api/journal/* (인증 필요)
 
 
 # ── 수명 주기 ─────────────────────────────────────────────────────────────

@@ -148,6 +148,39 @@ class StockHolding(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
+class RebalanceTarget(Base):
+    """리밸런싱 목표 비중 설정."""
+    __tablename__ = "rebalance_targets"
+
+    id = Column(Integer, primary_key=True)
+    ticker = Column(String(20), nullable=False, unique=True)
+    name = Column(String(100), nullable=False)
+    asset_type = Column(String(20), nullable=False, default="crypto")
+    target_weight = Column(Float, nullable=False)  # 목표 비중 (0~1)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class TradeRecord(Base):
+    """매매 기록 (업비트 자동 가져오기 + 수동 입력)."""
+    __tablename__ = "trade_records"
+
+    id = Column(Integer, primary_key=True)
+    trade_id = Column(String(100), unique=True, nullable=True)  # 거래소 주문 ID (중복 방지)
+    ticker = Column(String(20), nullable=False)
+    name = Column(String(100), nullable=True)
+    side = Column(String(10), nullable=False)       # "buy" | "sell"
+    price = Column(Float, nullable=False)            # 체결 단가
+    quantity = Column(Float, nullable=False)          # 체결 수량
+    total_amount = Column(Float, nullable=False)      # 체결 금액
+    fee = Column(Float, nullable=True, default=0)     # 수수료
+    asset_type = Column(String(20), nullable=False, default="crypto")
+    source = Column(String(20), nullable=False, default="upbit")  # "upbit" | "manual"
+    traded_at = Column(DateTime, nullable=False)      # 체결 시각
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    memo = Column(Text, nullable=True)                # 메모 (수동 입력용)
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
     # 기존 DB에 새 컬럼 추가 (이미 존재하면 무시)

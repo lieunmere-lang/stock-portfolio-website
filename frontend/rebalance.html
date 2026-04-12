@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>리밸런싱 — My Portfolio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <style>
+        :root {
+            --color-up: #16a34a;
+            --color-down: #dc2626;
+            --color-neutral: #6b7280;
+            --bg-main: #f1f5f9;
+            --card-radius: 0.875rem;
+        }
+        body { background: var(--bg-main); font-family: 'Inter', sans-serif; color: #1e293b; }
+        .navbar { box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+        .section-card {
+            border: none; border-radius: var(--card-radius);
+            box-shadow: 0 1px 4px rgba(0,0,0,.06);
+        }
+        .section-title {
+            font-size: .8rem; font-weight: 600; letter-spacing: .06em;
+            text-transform: uppercase; color: #64748b; margin-bottom: 1rem;
+        }
+        .text-up   { color: var(--color-up) !important; }
+        .text-down { color: var(--color-down) !important; }
+        .text-neutral { color: var(--color-neutral) !important; }
+
+        /* Sidebar */
+        html { scroll-behavior: smooth; }
+        @media (min-width: 992px) {
+            #sidebar {
+                position: fixed; top: 0; left: 0;
+                width: 240px; height: 100vh;
+                border-right: 1px solid #e2e8f0;
+                background: #fff;
+                display: flex; flex-direction: column;
+                z-index: 20;
+            }
+            body.has-sidebar > nav.navbar,
+            body.has-sidebar > #main-content,
+            body.has-sidebar > #loading-overlay { margin-left: 240px; }
+        }
+        .sidebar-link {
+            display: flex; align-items: center; gap: .6rem;
+            padding: .55rem 1rem;
+            color: #475569; text-decoration: none;
+            font-size: .88rem;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-link:hover:not(.disabled) { background: #f8fafc; color: #0f172a; }
+        .sidebar-link.active {
+            background: #eff6ff; color: #1d4ed8;
+            border-left-color: #1d4ed8; font-weight: 600;
+        }
+        .sidebar-link.disabled { color: #cbd5e1; cursor: not-allowed; }
+        .sidebar-group-label {
+            font-size: .7rem; font-weight: 700; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: .08em;
+            padding: 1rem 1rem .4rem;
+        }
+        .sidebar-footer {
+            padding: 1rem; border-top: 1px solid #e2e8f0;
+            margin-top: auto;
+        }
+        .sidebar-link .badge { margin-left: auto; }
+        .sidebar-stock {
+            display: flex; align-items: center; gap: .5rem;
+            padding: .4rem 1rem .4rem 1.8rem;
+            color: #64748b; text-decoration: none;
+            font-size: .8rem;
+            border-left: 3px solid transparent;
+            transition: background .15s;
+        }
+        .sidebar-stock:hover { background: #f8fafc; color: #0f172a; }
+        .sidebar-stock .stock-ticker { font-weight: 600; color: #334155; min-width: 3rem; }
+        .sidebar-stock .stock-name { color: #94a3b8; font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sidebar-stock .stock-pnl { margin-left: auto; font-size: .72rem; font-weight: 600; }
+
+        /* Rebalance-specific */
+        .target-row { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+        .target-row input { font-size: .85rem; }
+        .weight-bar { height: 8px; border-radius: 4px; overflow: hidden; background: #e2e8f0; }
+        .weight-bar-fill { height: 100%; border-radius: 4px; transition: width .4s; }
+        .action-buy { color: var(--color-up); font-weight: 600; }
+        .action-sell { color: var(--color-down); font-weight: 600; }
+        .action-hold { color: var(--color-neutral); font-weight: 600; }
+        .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .recommend-table th {
+            font-size: .72rem; font-weight: 600; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: .05em;
+            border-bottom: 1px solid #e2e8f0; background: #f8fafc;
+            padding: .6rem .75rem;
+        }
+        .recommend-table td { vertical-align: middle; padding: .65rem .75rem; border-color: #f1f5f9; }
+
+        #loading-overlay {
+            position: fixed; inset: 0; background: var(--bg-main); z-index: 100;
+            display: flex; align-items: center; justify-content: center;
+        }
+    </style>
+</head>
+<body class="has-sidebar">
+
+<!-- Sidebar -->
+<aside id="sidebar" class="offcanvas-lg offcanvas-start" tabindex="-1">
+    <div class="offcanvas-header border-bottom">
+        <span class="fw-bold"><i class="bi bi-bar-chart-line-fill text-primary"></i> My Portfolio</span>
+        <button type="button" class="btn-close d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#sidebar"></button>
+    </div>
+    <nav class="offcanvas-body d-flex flex-column p-0">
+        <a href="/" class="sidebar-link"><i class="bi bi-speedometer2 me-2"></i>대시보드</a>
+
+        <div class="sidebar-group-label">개인종목</div>
+        <div id="sidebar-assets"></div>
+
+        <div class="sidebar-group-label">분석</div>
+        <a href="/news.html" class="sidebar-link"><i class="bi bi-newspaper me-2"></i>뉴스 리포트</a>
+        <a href="/market.html" class="sidebar-link"><i class="bi bi-globe me-2"></i>시장 상황판</a>
+
+        <div class="sidebar-group-label">도구</div>
+        <span class="sidebar-link disabled">가격 알림 <span class="badge text-bg-light">준비중</span></span>
+        <a href="/rebalance.html" class="sidebar-link active"><i class="bi bi-sliders me-2"></i>리밸런싱</a>
+        <a href="/journal.html" class="sidebar-link"><i class="bi bi-journal-text me-2"></i>트레이드 저널</a>
+        <span class="sidebar-link disabled">수익 실현 계산기 <span class="badge text-bg-light">준비중</span></span>
+
+        <div class="sidebar-group-label">기타</div>
+        <span class="sidebar-link disabled">설정 <span class="badge text-bg-light">준비중</span></span>
+
+        <div class="sidebar-footer">
+            <button onclick="logout()" class="btn btn-sm btn-outline-secondary w-100">
+                <i class="bi bi-box-arrow-right"></i> 로그아웃
+            </button>
+        </div>
+    </nav>
+</aside>
+
+<!-- Navbar (mobile) -->
+<nav class="navbar navbar-light bg-white border-bottom px-3 py-2 d-lg-none">
+    <button class="btn btn-sm" type="button"
+            data-bs-toggle="offcanvas" data-bs-target="#sidebar"
+            aria-controls="sidebar" aria-label="메뉴 열기">
+        <i class="bi bi-list fs-4"></i>
+    </button>
+    <span class="fw-semibold fs-6">리밸런싱</span>
+    <span style="width:32px"></span>
+</nav>
+
+<!-- Loading -->
+<div id="loading-overlay">
+    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">로딩중...</span></div>
+</div>
+
+<!-- Main content -->
+<div id="main-content" class="container-fluid py-4" style="max-width:1100px;">
+    <h4 class="fw-bold mb-4"><i class="bi bi-sliders me-2 text-primary"></i>리밸런싱 추천</h4>
+
+    <!-- 목표 비중 설정 -->
+    <div class="section-card card mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="section-title mb-0">목표 비중 설정</div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary" id="btn-auto-fill">
+                        <i class="bi bi-magic me-1"></i>현재 비중으로 채우기
+                    </button>
+                    <button class="btn btn-sm btn-primary" id="btn-save-targets">
+                        <i class="bi bi-check-lg me-1"></i>저장
+                    </button>
+                </div>
+            </div>
+            <div id="targets-container"></div>
+            <button class="btn btn-sm btn-outline-secondary mt-2" id="btn-add-target">
+                <i class="bi bi-plus-lg me-1"></i>종목 추가
+            </button>
+            <div class="mt-2">
+                <small class="text-muted">합계: <span id="total-weight" class="fw-bold">0</span>%</small>
+                <span id="weight-warning" class="text-danger small ms-2" style="display:none;">비중 합이 100%가 아닙니다</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 추가 투자금 입력 -->
+    <div class="section-card card mb-4">
+        <div class="card-body">
+            <div class="section-title">추가 투자금</div>
+            <div class="input-group" style="max-width:320px;">
+                <input type="number" class="form-control" id="additional-invest" value="0" min="0" step="100000" placeholder="0">
+                <span class="input-group-text">원</span>
+                <button class="btn btn-primary" id="btn-calculate"><i class="bi bi-calculator me-1"></i>계산</button>
+            </div>
+            <small class="text-muted">0원이면 현재 자산 내에서 리밸런싱합니다.</small>
+        </div>
+    </div>
+
+    <!-- 비중 비교 차트 -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="section-card card h-100">
+                <div class="card-body">
+                    <div class="section-title">현재 비중</div>
+                    <canvas id="chart-current" height="240"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="section-card card h-100">
+                <div class="card-body">
+                    <div class="section-title">목표 비중</div>
+                    <canvas id="chart-target" height="240"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 리밸런싱 추천 테이블 -->
+    <div class="section-card card mb-4">
+        <div class="card-body">
+            <div class="section-title">리밸런싱 추천</div>
+            <div id="recommend-empty" class="text-center text-muted py-4" style="display:none;">
+                목표 비중을 설정하고 계산 버튼을 눌러주세요.
+            </div>
+            <div class="table-responsive" id="recommend-table-wrap" style="display:none;">
+                <table class="table recommend-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>종목</th>
+                            <th class="num">현재 비중</th>
+                            <th class="num">목표 비중</th>
+                            <th class="num">차이</th>
+                            <th class="num">현재 평가액</th>
+                            <th class="num">목표 평가액</th>
+                            <th class="num">조정 금액</th>
+                            <th>액션</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recommend-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 미추적 자산 -->
+    <div class="section-card card mb-4" id="untracked-card" style="display:none;">
+        <div class="card-body">
+            <div class="section-title">목표에 미포함된 보유 자산</div>
+            <div id="untracked-list"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const TOKEN = localStorage.getItem('portfolio_token');
+if (!TOKEN) location.href = '/login.html';
+
+const API = '';
+const headers = { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' };
+
+function logout() { localStorage.removeItem('portfolio_token'); window.location.href = '/login.html'; }
+
+async function apiFetch(url) {
+    const res = await fetch(url, { headers });
+    if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+function renderSidebarAssets(assets) {
+    const wrap = document.getElementById('sidebar-assets');
+    const filtered = assets.filter(a => (a.quantity * a.avg_price) >= 10000);
+    if (!filtered.length) { wrap.innerHTML = ''; return; }
+    wrap.innerHTML = filtered.map(a => {
+        const type = a.asset_type === 'stock' ? 'stock' : 'coin';
+        const plr = a.profit_loss_rate;
+        const cls = plr >= 0 ? 'text-up' : 'text-down';
+        const sign = plr >= 0 ? '+' : '';
+        const label = a.asset_type === 'stock' ? a.ticker : a.ticker.replace('KRW-', '');
+        return `<a href="/detail.html?type=${type}&ticker=${encodeURIComponent(a.ticker)}" class="sidebar-stock">
+            <span class="stock-ticker">${label}</span>
+            <span class="stock-name">${a.name}</span>
+            <span class="stock-pnl ${cls}">${sign}${(plr * 100).toFixed(1)}%</span>
+        </a>`;
+    }).join('');
+}
+
+let currentAssets = [];
+let chartCurrent = null;
+let chartTarget = null;
+
+// ── 초기 로드 ──
+async function init() {
+    try {
+        const [portfolioRes, targetsRes] = await Promise.all([
+            fetch(`${API}/api/portfolio`, { headers }),
+            fetch(`${API}/api/rebalance/targets`, { headers }),
+        ]);
+        const portfolio = await portfolioRes.json();
+        const targetsData = await targetsRes.json();
+
+        currentAssets = portfolio.assets || [];
+        renderSidebarAssets(currentAssets);
+
+        if (targetsData.targets && targetsData.targets.length > 0) {
+            renderTargets(targetsData.targets);
+        } else {
+            renderTargets([]);
+        }
+
+        updateTotalWeight();
+        await calculateRebalance();
+    } catch (e) {
+        console.error('Init error:', e);
+    }
+    document.getElementById('loading-overlay').style.display = 'none';
+}
+
+// ── 목표 비중 렌더 ──
+function renderTargets(targets) {
+    const container = document.getElementById('targets-container');
+    container.innerHTML = '';
+
+    if (targets.length === 0) {
+        container.innerHTML = '<p class="text-muted small">설정된 목표가 없습니다. "현재 비중으로 채우기" 또는 직접 종목을 추가하세요.</p>';
+        return;
+    }
+
+    targets.forEach((t, i) => {
+        const row = document.createElement('div');
+        row.className = 'target-row';
+        row.innerHTML = `
+            <input type="text" class="form-control form-control-sm" style="width:120px;" value="${t.ticker}" data-field="ticker" placeholder="KRW-BTC">
+            <input type="text" class="form-control form-control-sm" style="width:100px;" value="${t.name}" data-field="name" placeholder="이름">
+            <select class="form-select form-select-sm" style="width:90px;" data-field="asset_type">
+                <option value="crypto" ${t.asset_type === 'crypto' ? 'selected' : ''}>코인</option>
+                <option value="stock" ${t.asset_type === 'stock' ? 'selected' : ''}>주식</option>
+            </select>
+            <div class="input-group input-group-sm" style="width:120px;">
+                <input type="number" class="form-control form-control-sm" value="${(t.target_weight * 100).toFixed(1)}" data-field="weight" step="0.1" min="0" max="100">
+                <span class="input-group-text">%</span>
+            </div>
+            <button class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove(); updateTotalWeight();">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        `;
+        row.querySelector('[data-field="weight"]').addEventListener('input', updateTotalWeight);
+        container.appendChild(row);
+    });
+}
+
+function updateTotalWeight() {
+    const inputs = document.querySelectorAll('#targets-container [data-field="weight"]');
+    let total = 0;
+    inputs.forEach(inp => { total += parseFloat(inp.value) || 0; });
+    document.getElementById('total-weight').textContent = total.toFixed(1);
+    const warn = document.getElementById('weight-warning');
+    warn.style.display = Math.abs(total - 100) > 0.1 ? '' : 'none';
+}
+
+// ── 현재 비중으로 자동 채우기 ──
+document.getElementById('btn-auto-fill').addEventListener('click', () => {
+    if (!currentAssets.length) return;
+    const total = currentAssets.reduce((s, a) => s + a.total_value, 0);
+    const targets = currentAssets.map(a => ({
+        ticker: a.ticker,
+        name: a.name,
+        asset_type: a.asset_type || 'crypto',
+        target_weight: total > 0 ? a.total_value / total : 0,
+    }));
+    renderTargets(targets);
+    updateTotalWeight();
+});
+
+// ── 종목 추가 ──
+document.getElementById('btn-add-target').addEventListener('click', () => {
+    const container = document.getElementById('targets-container');
+    // 빈 안내 텍스트 제거
+    const emptyMsg = container.querySelector('p.text-muted');
+    if (emptyMsg) emptyMsg.remove();
+
+    const row = document.createElement('div');
+    row.className = 'target-row';
+    row.innerHTML = `
+        <input type="text" class="form-control form-control-sm" style="width:120px;" data-field="ticker" placeholder="KRW-BTC">
+        <input type="text" class="form-control form-control-sm" style="width:100px;" data-field="name" placeholder="이름">
+        <select class="form-select form-select-sm" style="width:90px;" data-field="asset_type">
+            <option value="crypto" selected>코인</option>
+            <option value="stock">주식</option>
+        </select>
+        <div class="input-group input-group-sm" style="width:120px;">
+            <input type="number" class="form-control form-control-sm" value="0" data-field="weight" step="0.1" min="0" max="100">
+            <span class="input-group-text">%</span>
+        </div>
+        <button class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove(); updateTotalWeight();">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    `;
+    row.querySelector('[data-field="weight"]').addEventListener('input', updateTotalWeight);
+    container.appendChild(row);
+});
+
+// ── 저장 ──
+document.getElementById('btn-save-targets').addEventListener('click', async () => {
+    const rows = document.querySelectorAll('#targets-container .target-row');
+    const targets = [];
+    rows.forEach(row => {
+        const ticker = row.querySelector('[data-field="ticker"]').value.trim();
+        const name = row.querySelector('[data-field="name"]').value.trim();
+        const assetType = row.querySelector('[data-field="asset_type"]').value;
+        const weight = parseFloat(row.querySelector('[data-field="weight"]').value) || 0;
+        if (ticker && weight > 0) {
+            targets.push({ ticker, name: name || ticker, asset_type: assetType, target_weight: weight / 100 });
+        }
+    });
+
+    try {
+        const res = await fetch(`${API}/api/rebalance/targets`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ targets }),
+        });
+        if (res.ok) {
+            showToast('목표 비중이 저장되었습니다.');
+            await calculateRebalance();
+        }
+    } catch (e) {
+        console.error('Save error:', e);
+    }
+});
+
+// ── 계산 ──
+document.getElementById('btn-calculate').addEventListener('click', calculateRebalance);
+
+async function calculateRebalance() {
+    const additional = parseInt(document.getElementById('additional-invest').value) || 0;
+    try {
+        const res = await fetch(`${API}/api/rebalance/recommend?additional=${additional}`, { headers });
+        const data = await res.json();
+        renderRecommendation(data);
+    } catch (e) {
+        console.error('Calculate error:', e);
+    }
+}
+
+// ── 추천 렌더링 ──
+function renderRecommendation(data) {
+    if (data.error || !data.items || data.items.length === 0) {
+        document.getElementById('recommend-empty').style.display = '';
+        document.getElementById('recommend-table-wrap').style.display = 'none';
+        document.getElementById('untracked-card').style.display = 'none';
+        renderCharts([], []);
+        return;
+    }
+
+    document.getElementById('recommend-empty').style.display = 'none';
+    document.getElementById('recommend-table-wrap').style.display = '';
+
+    const tbody = document.getElementById('recommend-tbody');
+    tbody.innerHTML = '';
+
+    data.items.forEach(item => {
+        const actionClass = item.action === 'buy' ? 'action-buy' : item.action === 'sell' ? 'action-sell' : 'action-hold';
+        const actionLabel = item.action === 'buy' ? '매수' : item.action === 'sell' ? '매도' : '유지';
+        const diffSign = item.diff_value >= 0 ? '+' : '';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>
+                <div class="fw-semibold" style="font-size:.88rem;">${item.name}</div>
+                <div class="text-muted" style="font-size:.72rem;">${item.ticker}</div>
+            </td>
+            <td class="num">${(item.current_weight * 100).toFixed(1)}%</td>
+            <td class="num">${(item.target_weight * 100).toFixed(1)}%</td>
+            <td class="num ${item.diff_weight >= 0 ? 'text-up' : 'text-down'}">
+                ${item.diff_weight >= 0 ? '+' : ''}${(item.diff_weight * 100).toFixed(1)}%p
+            </td>
+            <td class="num">${formatKRW(item.current_value)}</td>
+            <td class="num">${formatKRW(item.target_value)}</td>
+            <td class="num fw-semibold ${item.diff_value >= 0 ? 'text-up' : 'text-down'}">
+                ${diffSign}${formatKRW(item.diff_value)}
+            </td>
+            <td><span class="${actionClass}">${actionLabel}</span></td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    // 미추적 자산
+    const untrackedCard = document.getElementById('untracked-card');
+    if (data.untracked_assets && data.untracked_assets.length > 0) {
+        untrackedCard.style.display = '';
+        const list = document.getElementById('untracked-list');
+        list.innerHTML = data.untracked_assets.map(u => `
+            <div class="d-flex justify-content-between align-items-center py-1 border-bottom" style="font-size:.85rem;">
+                <span>${u.name} <span class="text-muted">${u.ticker}</span></span>
+                <span>${formatKRW(u.current_value)} (${(u.current_weight * 100).toFixed(1)}%)</span>
+            </div>
+        `).join('');
+    } else {
+        untrackedCard.style.display = 'none';
+    }
+
+    // 차트
+    renderCharts(data.items, data.untracked_assets || []);
+}
+
+// ── 도넛 차트 ──
+const COLORS = ['#3b82f6','#16a34a','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899','#84cc16','#f97316','#6366f1','#14b8a6','#e11d48'];
+
+function renderCharts(items, untracked) {
+    // Current
+    const currentLabels = [];
+    const currentValues = [];
+    items.forEach(i => { if (i.current_value > 0) { currentLabels.push(i.name); currentValues.push(i.current_value); } });
+    untracked.forEach(u => { currentLabels.push(u.name); currentValues.push(u.current_value); });
+
+    if (chartCurrent) chartCurrent.destroy();
+    chartCurrent = new Chart(document.getElementById('chart-current'), {
+        type: 'doughnut',
+        data: { labels: currentLabels, datasets: [{ data: currentValues, backgroundColor: COLORS }] },
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } },
+    });
+
+    // Target
+    const targetLabels = items.map(i => i.name);
+    const targetValues = items.map(i => i.target_weight * 100);
+
+    if (chartTarget) chartTarget.destroy();
+    chartTarget = new Chart(document.getElementById('chart-target'), {
+        type: 'doughnut',
+        data: { labels: targetLabels, datasets: [{ data: targetValues, backgroundColor: COLORS }] },
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } },
+    });
+}
+
+// ── 유틸 ──
+function formatKRW(n) {
+    if (n === null || n === undefined) return '—';
+    const abs = Math.abs(n);
+    if (abs >= 1e8) return (n / 1e8).toFixed(2) + '억';
+    if (abs >= 1e4) return (n / 1e4).toFixed(0) + '만';
+    return n.toLocaleString('ko-KR') + '원';
+}
+
+function showToast(msg) {
+    const el = document.createElement('div');
+    el.className = 'position-fixed bottom-0 end-0 p-3';
+    el.style.zIndex = '1100';
+    el.innerHTML = `<div class="toast show align-items-center text-bg-primary border-0" role="alert">
+        <div class="d-flex"><div class="toast-body">${msg}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+}
+
+init();
+</script>
+</body>
+</html>
