@@ -58,6 +58,8 @@ class AssetSnapshot(Base):
     profit_loss_rate = Column(Float, nullable=False)
     asset_type = Column(String(20), nullable=False, default="crypto")
     first_purchase_date = Column(DateTime, nullable=True)  # 최초 매수일
+    signed_change_price = Column(Float, nullable=True, default=0.0)
+    signed_change_rate = Column(Float, nullable=True, default=0.0)
 
     snapshot = relationship("PortfolioSnapshot", back_populates="assets")
 
@@ -122,6 +124,8 @@ def init_db():
         "ALTER TABLE portfolio_snapshots ADD COLUMN total_investment REAL",
         "ALTER TABLE portfolio_snapshots ADD COLUMN today_profit_loss REAL",
         "ALTER TABLE asset_snapshots ADD COLUMN first_purchase_date TEXT",
+        "ALTER TABLE asset_snapshots ADD COLUMN signed_change_price REAL DEFAULT 0",
+        "ALTER TABLE asset_snapshots ADD COLUMN signed_change_rate REAL DEFAULT 0",
     ]
     with engine.connect() as conn:
         for stmt in migration_stmts:

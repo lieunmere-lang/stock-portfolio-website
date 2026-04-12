@@ -4,8 +4,9 @@ from typing import Any, Dict, List
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from database import AssetSnapshot, ManualAsset, PortfolioSnapshot, Session, engine
+from database import AssetSnapshot, ManualAsset, PortfolioSnapshot, Session, StockHolding, engine
 from services.upbit import STAKING_MAP, fetch_upbit_assets, fetch_upbit_candles
+from services.stock import get_usd_krw
 
 scheduler = BackgroundScheduler()
 
@@ -175,6 +176,43 @@ def sync_portfolio() -> None:
                     "signed_change_price": float(ticker_data["signed_change_price"]),
                     "signed_change_rate": float(ticker_data["signed_change_rate"]),
                 })
+
+    # 주식 보유 자산 현재가 조회 후 병합
+    with Session(engine) as db:
+        stock_holdings = db.query(StockHolding).filter(StockHolding.is_active == True).all()
+
+    if stock_holdings:
+        usd_krw = get_usd_krw()
+        if usd_krw:
+            import yfinance as yf
+            for s in stock_holdings:
+                try:
+                    t = yf.Ticker(s.ticker)
+                    info = t.info
+                    cur_price_usd = info.get("currentPrice") or info.get("regularMarketPrice")
+                    if cur_price_usd is None:
+                        continue
+                    cur_price_krw = cur_price_usd * usd_krw
+                    avg_price_krw = s.avg_price * usd_krw
+                    previous_close = info.get("previousClose")
+                    signed_change_price = 0.0
+                    signed_change_rate = 0.0
+                    if previous_close and previous_close > 0:
+                        signed_change_price = (cur_price_usd - previous_close) * usd_krw
+                        signed_change_rate = (cur_price_usd - previous_close) / previous_close
+                    raw_assets.append({
+                        "name": s.name,
+                        "ticker": s.ticker,
+                        "quantity": s.quantity,
+                        "avg_price": avg_price_krw,
+                        "current_price": cur_price_krw,
+                        "first_purchase_date": s.first_purchase_date,
+                        "asset_type": "stock",
+                        "signed_change_price": signed_change_price,
+                        "signed_change_rate": signed_change_rate,
+                    })
+                except Exception as e:
+                    print(f"[Sync] 주식 {s.ticker} 조회 실패: {e}")
 
     total_value = 0.0
     total_purchase = 0.0

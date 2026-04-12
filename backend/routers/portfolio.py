@@ -20,6 +20,7 @@ class AssetOut(BaseModel):
     first_purchase_date: Any = None
     signed_change_price: float = 0
     signed_change_rate: float = 0
+    currency: str = "KRW"
 
 
 class PortfolioOut(BaseModel):
