@@ -391,7 +391,6 @@
                         <th data-sort="profit_loss" class="num sortable">손익</th>
                         <th data-sort="profit_loss_rate" class="num sortable">수익률</th>
                         <th data-sort="weight" class="num sortable">비중</th>
-                        <th data-sort="signed_change_rate" class="num sortable">일일변동</th>
                     </tr>
                 </thead>
                 <tbody id="holdings-tbody"></tbody>
@@ -660,7 +659,7 @@ function renderHoldingsTable(assets) {
     const tbody = document.getElementById('holdings-tbody');
     tbody.innerHTML = '';
     if (!holdingsAssets.length) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-5 text-muted">보유 종목 없음</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-5 text-muted">보유 종목 없음</td></tr>';
         return;
     }
 
@@ -686,8 +685,15 @@ function renderHoldingsTable(assets) {
         });
         tr.innerHTML = `
             <td>
-                <div class="fw-semibold">${a.name}${a.asset_type === 'stock' ? ' <span class="badge bg-primary-subtle text-primary" style="font-size:.6rem;">US</span>' : ''}</div>
-                <div class="text-muted" style="font-size:.72rem;">${a.ticker}</div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="fw-semibold">${a.name}${a.asset_type === 'stock' ? ' <span class="badge bg-primary-subtle text-primary" style="font-size:.6rem;">US</span>' : ''}</div>
+                        <div class="text-muted" style="font-size:.72rem;">${a.ticker}</div>
+                    </div>
+                    <div class="text-end ${dailyCls}" style="font-size:.75rem;min-width:60px;" data-flash="${tk}:daily">
+                        <div>${PCT(a.signed_change_rate)}</div>
+                    </div>
+                </div>
             </td>
             <td class="num">${a.avg_price_usd ? USD(a.avg_price_usd) : KRW(a.avg_price)}</td>
             <td class="num" data-flash="${tk}:price">${a.current_price_usd ? USD(a.current_price_usd) : KRW(a.current_price)}</td>
@@ -703,10 +709,6 @@ function renderHoldingsTable(assets) {
                         <div style="width:${weight}%;height:100%;background:#3b82f6;border-radius:3px;"></div>
                     </div>
                 </div>
-            </td>
-            <td class="num ${dailyCls}" data-flash="${tk}:daily">
-                <div>${KRW(a.signed_change_price)}</div>
-                <div class="text-muted" style="font-size:.72rem;">${PCT(a.signed_change_rate)}</div>
             </td>
         `;
         tbody.appendChild(tr);
@@ -740,11 +742,14 @@ function renderAllocationChart(assets) {
     const values = assets.map(a => a.total_value);
     const COLORS = ['#3b82f6','#14b8a6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f97316','#a78bfa'];
 
+    const totalVal = values.reduce((s,v)=>s+v,0);
+    const pctLabels = labels.map((l,i) => `${l} ${(values[i]/totalVal*100).toFixed(1)}%`);
+
     if (!allocationChart) {
         allocationChart = new Chart(document.getElementById('allocation-chart'), {
             type: 'doughnut',
             data: {
-                labels,
+                labels: pctLabels,
                 datasets: [{ data: values, backgroundColor: COLORS.slice(0, values.length), borderWidth: 2, borderColor: '#fff' }]
             },
             options: {
@@ -752,15 +757,14 @@ function renderAllocationChart(assets) {
                 plugins: {
                     legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 11 } } },
                     tooltip: { callbacks: { label: ctx => {
-                        const total = values.reduce((s,v)=>s+v,0);
-                        return ` ${ctx.label}: ${(ctx.parsed/total*100).toFixed(1)}%`;
+                        return ` ${labels[ctx.dataIndex]}: ${(ctx.parsed/totalVal*100).toFixed(1)}%`;
                     }}}
                 },
                 maintainAspectRatio: false,
             }
         });
     } else {
-        allocationChart.data.labels = labels;
+        allocationChart.data.labels = pctLabels;
         allocationChart.data.datasets[0].data = values;
         allocationChart.data.datasets[0].backgroundColor = COLORS.slice(0, values.length);
         allocationChart.update();
