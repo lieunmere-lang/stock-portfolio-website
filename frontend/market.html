@@ -166,7 +166,7 @@
 
         <div class="sidebar-group-label">분석</div>
         <a href="/news.html" class="sidebar-link"><i class="bi bi-newspaper me-2"></i>뉴스 리포트</a>
-        <a href="/market.html" class="sidebar-link active"><i class="bi bi-grid-3x3-gap me-2"></i>시장 상황판</a>
+        <a href="/market.html" class="sidebar-link active"><i class="bi bi-globe me-2"></i>시장 상황판</a>
 
         <div class="sidebar-group-label">도구</div>
         <span class="sidebar-link disabled">가격 알림 <span class="badge text-bg-light">준비중</span></span>
@@ -301,8 +301,35 @@ async function loadHeatmap(period) {
 
     loadingEl.style.display = 'none';
 
-    // Build D3 hierarchy from API data
-    // Expected: { name, children: [{ name (sector), children: [{ ticker, name, change_pct, market_cap }] }] }
+    // Transform flat API response into D3 hierarchy
+    const hierarchyData = { name: 'Market', children: [] };
+
+    // Group stocks by GICS sector
+    const sectorMap = {};
+    (data.stocks || []).forEach(s => {
+        if (!sectorMap[s.sector]) sectorMap[s.sector] = [];
+        sectorMap[s.sector].push({ name: s.ticker, fullName: s.name, market_cap: s.market_cap || 1, change_pct: s.change_pct });
+    });
+    Object.entries(sectorMap).forEach(([sector, stocks]) => {
+        hierarchyData.children.push({ name: sector, children: stocks });
+    });
+
+    // Coins as "Crypto" group
+    if (data.coins && data.coins.length > 0) {
+        hierarchyData.children.push({
+            name: 'Crypto',
+            children: data.coins.map(c => ({ name: c.ticker, fullName: c.name, market_cap: c.market_cap || 1, change_pct: c.change_pct }))
+        });
+    }
+
+    // Commodities as "Commodities" group
+    if (data.commodities && data.commodities.length > 0) {
+        hierarchyData.children.push({
+            name: 'Commodities',
+            children: data.commodities.map(c => ({ name: c.ticker, fullName: c.name, market_cap: 1, change_pct: c.change_pct }))
+        });
+    }
+
     const width  = container.clientWidth;
     const height = container.clientHeight;
 
@@ -310,7 +337,7 @@ async function loadHeatmap(period) {
         .attr('width', width)
         .attr('height', height);
 
-    const root = d3.hierarchy(data)
+    const root = d3.hierarchy(hierarchyData)
         .sum(d => d.market_cap || 1)
         .sort((a, b) => b.value - a.value);
 
@@ -473,7 +500,7 @@ async function loadIndicators() {
         const d = data[meta.key] || {};
         const value     = d.value ?? null;
         const changePct = d.change_pct ?? null;
-        const history   = d.history || [];
+        const history   = d.sparkline || [];
 
         // Determine color for change
         let changeColor = 'var(--color-neutral)';
