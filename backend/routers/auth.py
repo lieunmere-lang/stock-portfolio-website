@@ -35,16 +35,17 @@ _MAX_ATTEMPTS = 5
 _WINDOW_SECONDS = 300  # 5 minutes
 
 
-def _check_rate_limit(client_ip: str) -> bool:
-    """Returns True if rate limited."""
+def _check_rate_limit(client_ip: str) -> tuple[bool, int]:
+    """Returns (is_limited, remaining_attempts)."""
     now = time()
     attempts = _login_attempts[client_ip]
     # Clean old attempts
     _login_attempts[client_ip] = [t for t in attempts if now - t < _WINDOW_SECONDS]
-    if len(_login_attempts[client_ip]) >= _MAX_ATTEMPTS:
-        return True
+    current_count = len(_login_attempts[client_ip])
+    if current_count >= _MAX_ATTEMPTS:
+        return True, 0
     _login_attempts[client_ip].append(now)
-    return False
+    return False, _MAX_ATTEMPTS - current_count - 1
 
 
 class LoginRequest(BaseModel):
@@ -79,10 +80,11 @@ def verify_token(token: str) -> str:
 @router.post("/token", response_model=TokenResponse)
 def login(body: LoginRequest, request: Request):
     client_ip = request.client.host if request.client else "unknown"
-    if _check_rate_limit(client_ip):
+    is_limited, remaining = _check_rate_limit(client_ip)
+    if is_limited:
         raise HTTPException(
             status_code=429,
-            detail="Too many login attempts. Try again later.",
+            detail="로그인 시도가 너무 많습니다. 5분 후 다시 시도해주세요.",
         )
     valid = (
         _secrets.compare_digest(body.username, APP_USERNAME)
@@ -91,7 +93,7 @@ def login(body: LoginRequest, request: Request):
     if not valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="아이디 또는 비밀번호가 잘못되었습니다.",
+            detail=f"아이디 또는 비밀번호가 잘못되었습니다. (남은 시도: {remaining}회)",
         )
     token = create_access_token(subject=body.username)
     return {"access_token": token, "token_type": "bearer"}
