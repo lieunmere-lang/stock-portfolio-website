@@ -178,21 +178,6 @@ def _get_sp500_market_caps(tickers: List[str]) -> Dict[str, float]:
     return mcap_dict
 
 
-def prewarm_market_caps():
-    """서버 시작 시 호출 — 백그라운드에서 시가총액 캐시를 미리 채운다."""
-    import threading
-
-    def _warm():
-        sp500 = get_sp500_list()
-        if sp500:
-            tickers = [s["ticker"] for s in sp500]
-            _get_sp500_market_caps(tickers)
-
-    t = threading.Thread(target=_warm, daemon=True)
-    t.start()
-    print("[Market] 시가총액 프리워밍 시작 (백그라운드)")
-
-
 def _fetch_coin_heatmap(period: str) -> List[Dict]:
     """CoinGecko에서 상위 5개 코인 히트맵 데이터 수집."""
     period_field_map = {

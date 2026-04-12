@@ -9,6 +9,7 @@ import asyncio
 from database import AssetSnapshot, ManualAsset, NewsReport, NewsReportItem, PortfolioSnapshot, RawNews, Session, StockHolding, engine
 from services.upbit import STAKING_MAP, fetch_upbit_assets, fetch_upbit_candles
 from services.stock import get_usd_krw
+from services.market import get_sp500_list, _get_sp500_market_caps
 
 scheduler = BackgroundScheduler()
 
@@ -460,6 +461,18 @@ def generate_news_report() -> dict:
     return report_data
 
 
+def sync_market_caps():
+    """S&P500 시가총액 일일 동기화. 매일 오전 7시 자동 실행."""
+    try:
+        sp500 = get_sp500_list()
+        if sp500:
+            tickers = [s["ticker"] for s in sp500]
+            _get_sp500_market_caps(tickers)
+            print(f"[Scheduler] S&P500 시가총액 동기화 완료: {len(tickers)}개")
+    except Exception as e:
+        print(f"[Scheduler] S&P500 시가총액 동기화 실패: {e}")
+
+
 def start_scheduler():
     # 서버 시작 즉시 1회 실행 후, 이후 1분 간격으로 반복
     scheduler.add_job(
@@ -476,6 +489,15 @@ def start_scheduler():
         minute=50,
         timezone="Asia/Seoul",
         id="news_report",
+    )
+    scheduler.add_job(
+        sync_market_caps,
+        "cron",
+        hour=7,
+        minute=0,
+        timezone="Asia/Seoul",
+        id="market_cap_sync",
+        next_run_time=datetime.now(),  # 서버 시작 시 즉시 1회 실행
     )
     scheduler.start()
 
