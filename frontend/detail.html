@@ -261,7 +261,9 @@ const SUPPLY = v => {
 function pnlClass(v) { return v == null ? '' : v >= 0 ? 'text-up' : 'text-down'; }
 
 // ── State ──────────────────────────────────────────────────────────────────────
-const ticker = new URLSearchParams(location.search).get('ticker') || '';
+const params = new URLSearchParams(location.search);
+const ticker = params.get('ticker') || '';
+const assetType = params.get('type') || 'coin';
 let priceChart = null;
 let currentDays = 30;
 
@@ -384,6 +386,182 @@ function renderLinks(detail) {
     ).join('');
 }
 
+// ── Stock render functions ───────────────────────────────────────────────────
+const USD = v => v == null ? '—' : `$${v.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+function renderStockHeader(detail) {
+    const wrap = document.getElementById('coin-logo-wrap');
+    if (detail.logo_url) {
+        wrap.innerHTML = `<img src="${detail.logo_url}" class="coin-logo" alt="${detail.symbol}">`;
+    } else {
+        wrap.innerHTML = `<div class="coin-logo-placeholder">${(detail.symbol || '?').slice(0,3)}</div>`;
+    }
+
+    document.getElementById('coin-name').textContent = detail.name ?? '—';
+    document.getElementById('coin-symbol').textContent = detail.symbol ?? '';
+    document.getElementById('nav-title').textContent = detail.name ?? ticker;
+    document.title = `${detail.name ?? ticker} — My Portfolio`;
+
+    document.getElementById('current-price').textContent = USD(detail.current_price);
+
+    const pct = detail.price_change_pct;
+    const badge = document.getElementById('change-24h-badge');
+    badge.textContent = PCT(pct);
+    badge.className = `badge-change ${pct != null && pct >= 0 ? 'badge-up' : 'badge-down'}`;
+
+    const periodWrap = document.getElementById('period-changes');
+    periodWrap.innerHTML = '';
+    if (detail.post_market_price) {
+        const span = document.createElement('span');
+        span.className = 'badge-change';
+        span.style.background = 'rgba(100,116,139,.1)';
+        span.style.color = '#64748b';
+        span.textContent = `시간외 ${USD(detail.post_market_price)}`;
+        periodWrap.appendChild(span);
+    }
+    if (detail.current_price_krw) {
+        const span = document.createElement('span');
+        span.className = 'badge-change';
+        span.style.background = 'rgba(100,116,139,.1)';
+        span.style.color = '#64748b';
+        span.textContent = `≈ ${KRW(detail.current_price_krw)}`;
+        periodWrap.appendChild(span);
+    }
+}
+
+function renderStockMarketGrid(detail) {
+    const BIGNUM = v => {
+        if (v == null) return '—';
+        if (v >= 1e12) return `$${(v/1e12).toFixed(2)}T`;
+        if (v >= 1e9) return `$${(v/1e9).toFixed(2)}B`;
+        if (v >= 1e6) return `$${(v/1e6).toFixed(2)}M`;
+        return `$${v.toLocaleString()}`;
+    };
+    const PCTFMT = v => v == null ? '—' : `${(v * 100).toFixed(2)}%`;
+    const RATIO = v => v == null ? '—' : v.toFixed(2);
+
+    const rangeBar = (low, high, current) => {
+        if (low == null || high == null || current == null) return '';
+        const pct = high > low ? ((current - low) / (high - low) * 100) : 50;
+        return `<div style="height:6px;border-radius:3px;background:#e2e8f0;margin-top:4px;position:relative;">
+            <div style="height:100%;border-radius:3px;background:linear-gradient(90deg,#dc2626,#f59e0b,#16a34a);width:100%;opacity:.3;"></div>
+            <div style="position:absolute;top:-2px;left:${Math.min(Math.max(pct,2),98)}%;width:10px;height:10px;border-radius:50%;background:#1e293b;transform:translateX(-50%);"></div>
+        </div>`;
+    };
+
+    const sections = [
+        { title: '밸류에이션', items: [
+            { label: 'PER (TTM)', value: RATIO(detail.trailing_pe) },
+            { label: 'Forward PER', value: RATIO(detail.forward_pe) },
+            { label: 'PBR', value: RATIO(detail.price_to_book) },
+            { label: 'PSR', value: RATIO(detail.price_to_sales) },
+            { label: 'EV/EBITDA', value: RATIO(detail.ev_to_ebitda) },
+        ]},
+        { title: '수익성 / 배당', items: [
+            { label: 'ROE', value: PCTFMT(detail.roe) },
+            { label: 'ROA', value: PCTFMT(detail.roa) },
+            { label: '배당수익률', value: PCTFMT(detail.dividend_yield) },
+            { label: '연간 배당금', value: USD(detail.dividend_rate) },
+            { label: '배당일', value: detail.ex_dividend_date ?? '—' },
+        ]},
+        { title: '시장 데이터', items: [
+            { label: '시가총액', value: BIGNUM(detail.market_cap) },
+            { label: '거래량', value: detail.volume ? detail.volume.toLocaleString() : '—' },
+            { label: '평균 거래량', value: detail.average_volume ? detail.average_volume.toLocaleString() : '—' },
+            { label: 'Day Range', value: `${USD(detail.day_low)} — ${USD(detail.day_high)}`, extra: rangeBar(detail.day_low, detail.day_high, detail.current_price) },
+            { label: '52주 Range', value: `${USD(detail.fifty_two_week_low)} — ${USD(detail.fifty_two_week_high)}`, extra: rangeBar(detail.fifty_two_week_low, detail.fifty_two_week_high, detail.current_price) },
+        ]},
+        { title: '애널리스트 컨센서스', items: [
+            { label: '추천', value: (detail.recommendation_key ?? '—').toUpperCase() },
+            { label: '목표가 (평균)', value: USD(detail.target_mean_price) },
+            { label: '목표가 범위', value: `${USD(detail.target_low_price)} — ${USD(detail.target_high_price)}` },
+            { label: '애널리스트 수', value: detail.number_of_analysts ?? '—' },
+        ]},
+    ];
+
+    const grid = document.getElementById('market-grid');
+    grid.innerHTML = '';
+    grid.className = '';
+
+    sections.forEach(sec => {
+        const sectionEl = document.createElement('div');
+        sectionEl.className = 'mb-4';
+        sectionEl.innerHTML = `<div class="section-title">${sec.title}</div>
+            <div class="row g-2">${sec.items.map(i => `
+                <div class="col-6 col-md-4 col-lg-6 col-xl-4">
+                    <div class="stat-cell">
+                        <div class="stat-label">${i.label}</div>
+                        <div class="stat-value">${i.value}</div>
+                        ${i.extra || ''}
+                    </div>
+                </div>`).join('')}
+            </div>`;
+        grid.appendChild(sectionEl);
+    });
+}
+
+async function renderStockPriceChart(days) {
+    try {
+        const data = await apiFetch(`/api/stock/${encodeURIComponent(ticker)}/price-history?days=${days}`);
+        if (!data.timestamps?.length) return;
+
+        const axisFormat = days <= 90
+            ? d => `${d.getMonth()+1}/${d.getDate()}`
+            : d => `${d.getFullYear()}/${d.getMonth()+1}`;
+
+        const labels = data.timestamps.map(t => {
+            const [y, m, d] = t.split('-').map(Number);
+            return axisFormat(new Date(y, m-1, d));
+        });
+
+        const firstPrice = data.prices[0] || 1;
+        const lastPrice  = data.prices[data.prices.length - 1] ?? firstPrice;
+        const isUp = lastPrice >= firstPrice;
+        const lineColor = isUp ? '#16a34a' : '#dc2626';
+        const bgColor   = isUp ? 'rgba(22,163,74,.08)' : 'rgba(220,38,38,.08)';
+
+        const tooltipCb = {
+            title: ctx => data.timestamps[ctx[0].dataIndex],
+            label: ctx => ` $${ctx.parsed.y.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`,
+        };
+        const yTickCb = v => {
+            if (v >= 1e6) return `$${(v/1e6).toFixed(0)}M`;
+            if (v >= 1e3) return `$${(v/1e3).toFixed(0)}K`;
+            return `$${v}`;
+        };
+
+        if (!priceChart) {
+            priceChart = new Chart(document.getElementById('price-chart'), {
+                type: 'line',
+                data: { labels, datasets: [{
+                    data: data.prices, borderColor: lineColor, backgroundColor: bgColor,
+                    fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2,
+                }]},
+                options: {
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { display: false }, tooltip: { callbacks: tooltipCb } },
+                    scales: {
+                        x: { ticks: { maxTicksLimit: days <= 90 ? 10 : 8, font: { size: 10 }, maxRotation: 0 }, grid: { display: false } },
+                        y: { ticks: { callback: yTickCb, font: { size: 10 } }, grid: { color: '#f1f5f9' } },
+                    },
+                    maintainAspectRatio: false,
+                }
+            });
+        } else {
+            priceChart.options.scales.x.ticks.maxTicksLimit = days <= 90 ? 10 : 8;
+            priceChart.data.labels = labels;
+            priceChart.data.datasets[0].data = data.prices;
+            priceChart.data.datasets[0].borderColor = lineColor;
+            priceChart.data.datasets[0].backgroundColor = bgColor;
+            priceChart.options.plugins.tooltip.callbacks = tooltipCb;
+            priceChart.options.scales.y.ticks.callback = yTickCb;
+            priceChart.update();
+        }
+    } catch(e) {
+        console.error('stock price chart error:', e);
+    }
+}
+
 async function renderPriceChart(days) {
     try {
         const data = await apiFetch(`/api/coin/${encodeURIComponent(ticker)}/price-history?days=${days}`);
@@ -469,25 +647,46 @@ async function renderPriceChart(days) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function loadDetail() {
-    if (!ticker) {
-        window.location.href = '/';
-        return;
-    }
+    if (!ticker) { window.location.href = '/'; return; }
+
     try {
-        const [detail, portfolio] = await Promise.all([
-            apiFetch(`/api/coin/${encodeURIComponent(ticker)}`),
-            apiFetch('/api/portfolio'),
-        ]);
+        if (assetType === 'stock') {
+            const [detail, portfolio] = await Promise.all([
+                apiFetch(`/api/stock/${encodeURIComponent(ticker)}`),
+                apiFetch('/api/portfolio'),
+            ]);
 
-        renderHeader(detail);
-        renderMarketGrid(detail);
-        renderLinks(detail);
+            renderStockHeader(detail);
+            renderStockMarketGrid(detail);
 
-        // 내 보유 현황
-        const myAsset = (portfolio.assets || []).find(a => a.ticker === ticker);
-        renderHolding(myAsset, portfolio.total_value);
+            if (detail.website) {
+                document.getElementById('links-section').classList.remove('d-none');
+                document.getElementById('links-wrap').innerHTML =
+                    `<a href="${detail.website}" target="_blank" rel="noopener"
+                        class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1">
+                        <i class="bi bi-globe"></i> 공식 사이트
+                     </a>`;
+            }
 
-        await renderPriceChart(currentDays);
+            const myAsset = (portfolio.assets || []).find(a => a.ticker === ticker);
+            renderHolding(myAsset, portfolio.total_value);
+
+            await renderStockPriceChart(currentDays);
+        } else {
+            const [detail, portfolio] = await Promise.all([
+                apiFetch(`/api/coin/${encodeURIComponent(ticker)}`),
+                apiFetch('/api/portfolio'),
+            ]);
+
+            renderHeader(detail);
+            renderMarketGrid(detail);
+            renderLinks(detail);
+
+            const myAsset = (portfolio.assets || []).find(a => a.ticker === ticker);
+            renderHolding(myAsset, portfolio.total_value);
+
+            await renderPriceChart(currentDays);
+        }
 
         document.getElementById('loading-overlay').style.display = 'none';
         document.getElementById('main-content').style.display = '';
@@ -508,7 +707,11 @@ document.getElementById('chart-period-btns').addEventListener('click', async e =
     document.querySelectorAll('#chart-period-btns button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentDays = +btn.dataset.days;
-    await renderPriceChart(currentDays);
+    if (assetType === 'stock') {
+        await renderStockPriceChart(currentDays);
+    } else {
+        await renderPriceChart(currentDays);
+    }
 });
 
 document.addEventListener('DOMContentLoaded', loadDetail);
