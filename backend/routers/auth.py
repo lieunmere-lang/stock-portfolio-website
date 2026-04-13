@@ -25,7 +25,7 @@ if not os.getenv("JWT_SECRET_KEY"):
     logger.warning("JWT_SECRET_KEY not set — using random key (tokens won't survive restart)")
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_DAYS = 7
+ACCESS_TOKEN_EXPIRE_DAYS = 1
 
 router = APIRouter(prefix="/auth")
 
@@ -130,10 +130,12 @@ def login(body: LoginRequest, request: Request):
     )
     if not valid:
         _record_failed_attempt(client_ip)
+        logger.warning(f"Failed login attempt from {client_ip}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"아이디 또는 비밀번호가 잘못되었습니다. (남은 시도: {remaining}회)",
+            detail="아이디 또는 비밀번호가 잘못되었습니다.",
         )
     _reset_attempts(client_ip)
+    logger.info(f"Successful login from {client_ip}")
     token = create_access_token(subject=body.username)
     return {"access_token": token, "token_type": "bearer"}

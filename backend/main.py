@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from jose import JWTError
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from database import init_db
 from routers.analytics import router as analytics_router
@@ -36,7 +37,30 @@ async def lifespan(app: FastAPI):
     stop_scheduler()
 
 
-app = FastAPI(title="Portfolio API", lifespan=lifespan)
+app = FastAPI(
+    title="Portfolio API",
+    lifespan=lifespan,
+    docs_url=None,      # Swagger UI 비활성화 (보안)
+    redoc_url=None,      # ReDoc 비활성화 (보안)
+    openapi_url=None,    # OpenAPI 스키마 비활성화 (보안)
+)
+
+
+# ── 보안 헤더 미들웨어 ──────────────────────────────────────────────────
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        # HSTS는 ngrok이 HTTPS를 처리하므로 적용
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 # CORS: 로컬 개발 + 동일 origin 허용 (ngrok/Cloudflare는 same-origin으로 접근)
 app.add_middleware(
