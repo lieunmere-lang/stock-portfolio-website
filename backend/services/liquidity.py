@@ -103,25 +103,48 @@ def _normalize_monthly(series: List[Dict]) -> List[Dict]:
     return [{"date": k, "value": v["value"]} for k, v in sorted(monthly.items())]
 
 
+def _normalize_weekly(series: List[Dict]) -> List[Dict]:
+    """일별 데이터를 주간(금요일 기준)으로 리샘플링한다."""
+    if not series:
+        return []
+    from datetime import date as dt_date
+    weekly = {}
+    for item in series:
+        d = datetime.strptime(item["date"][:10], "%Y-%m-%d")
+        # ISO 주차 기준 (YYYY-WNN)
+        iso = d.isocalendar()
+        key = f"{iso[0]}-W{iso[1]:02d}"
+        weekly[key] = item  # 해당 주의 마지막 값
+    return [{"date": k, "value": v["value"]} for k, v in sorted(weekly.items())]
+
+
 def get_liquidity_flow(days: int = 365) -> Dict[str, Any]:
     """유동성 흐름 데이터를 수집하고 코멘트를 생성한다."""
     logger.info(f"유동성 흐름 데이터 수집 시작 (days={days})")
 
-    # 데이터 수집 (병렬화 가능하지만 단순하게 순차 처리)
+    # 데이터 수집
     raw = {
-        "m2": _fred_series("WM2NS", days),           # 글로벌→미국 M2 (주간, 10억달러)
+        # 자산군
+        "m2": _fred_series("WM2NS", days),           # 미국 M2 (주간, 10억달러)
         "mmf": _fred_series("MMMFFAQ027S", days),     # MMF 총자산 (분기)
         "stocks": _yahoo_history("SPY", days),         # S&P500 ETF
         "bonds": _yahoo_history("TLT", days),          # 장기국채 ETF
         "gold": _yahoo_history("GLD", days),            # 금 ETF
         "commodities": _yahoo_history("DBC", days),     # 원자재 ETF
         "crypto": _coingecko_total_market_cap(days),    # 크립토 총 시총
+        # 선행지표
+        "dxy": _yahoo_history("DX-Y.NYB", days),       # 달러 인덱스
+        "vix": _yahoo_history("^VIX", days),            # 공포지수
+        "yield_spread": _fred_series("T10Y2Y", days),   # 10년-2년 금리차
     }
 
-    # 월별 리샘플링
-    monthly = {}
+    # 주간 리샘플링
+    weekly = {}
     for key, series in raw.items():
-        monthly[key] = _normalize_monthly(series)
+        weekly[key] = _normalize_weekly(series)
+
+    # 하위 호환: monthly 키도 유지
+    monthly = weekly
 
     # 최신 값과 변화율 계산
     current = {}
@@ -171,6 +194,9 @@ ASSET_LABELS = {
     "gold": "금",
     "crypto": "코인",
     "commodities": "원자재",
+    "dxy": "달러(DXY)",
+    "vix": "공포지수(VIX)",
+    "yield_spread": "장단기 금리차",
 }
 
 
@@ -247,6 +273,42 @@ def _generate_comments(current: Dict) -> Dict[str, Any]:
     else:
         per_asset["commodities"] = "혼조세."
 
+    # ── 선행지표 ──
+
+    # DXY (달러 인덱스)
+    dxy = current.get("dxy", {})
+    chg = dxy.get("change_pct", 0)
+    if chg > 1.5:
+        per_asset["dxy"] = "⚠️ 달러 강세. 신흥국·코인·원자재에 하방 압력. 위험자산 약세 예고."
+    elif chg < -1.5:
+        per_asset["dxy"] = "🟢 달러 약세 전환. 위험자산(주식/코인)으로 자금 이동 예상."
+    else:
+        per_asset["dxy"] = "달러 횡보. 방향성 제한적."
+
+    # VIX (공포지수)
+    vix = current.get("vix", {})
+    vix_val = vix.get("value", 0) or 0
+    if vix_val > 35:
+        per_asset["vix"] = "🔴 극도의 공포. 패닉셀 진행 중. 역설적 매수 기회 탐색 구간."
+    elif vix_val > 25:
+        per_asset["vix"] = "⚠️ 불안 확대. 안전자산 이동 가속. 주식/코인 추가 하락 가능."
+    elif vix_val < 15:
+        per_asset["vix"] = "과도한 낙관. 변동성 확대 전 잠잠한 구간일 수 있음."
+    else:
+        per_asset["vix"] = "정상 범위. 시장 안정적."
+
+    # 장단기 금리차
+    ys = current.get("yield_spread", {})
+    ys_val = ys.get("value", 0) or 0
+    if ys_val < 0:
+        per_asset["yield_spread"] = "🔴 수익률 곡선 역전. 경기 침체 경고 신호 (2~6개월 선행)."
+    elif ys_val < 0.3:
+        per_asset["yield_spread"] = "⚠️ 금리차 축소. 경기 둔화 초기 신호."
+    elif ys_val > 1.0:
+        per_asset["yield_spread"] = "🟢 정상적 금리 구조. 경기 확장 환경."
+    else:
+        per_asset["yield_spread"] = "금리차 정상 범위."
+
     # 종합 해석
     summary = _generate_summary(current)
 
@@ -283,6 +345,22 @@ def _generate_summary(current: Dict) -> str:
     # M2 감소 경고
     if m2_chg < -1:
         signals.append("⚠️ M2 감소 중. 유동성 긴축 환경에서 자산 가격 하방 압력.")
+
+    # 선행지표 시그널
+    dxy_chg = current.get("dxy", {}).get("change_pct", 0)
+    vix_val = current.get("vix", {}).get("value", 0) or 0
+    ys_val = current.get("yield_spread", {}).get("value", 0) or 0
+
+    if dxy_chg < -1.5 and m2_chg > 0:
+        signals.append("🟢 달러 약세 + M2 확장 = 불장 환경 조성 중.")
+    elif dxy_chg > 1.5 and vix_val > 25:
+        signals.append("🔴 달러 강세 + 공포 확대 = 위험자산 추가 하락 경계.")
+
+    if vix_val > 35:
+        signals.append("극단적 공포 구간. 역사적으로 중장기 매수 기회였던 구간.")
+
+    if ys_val < 0:
+        signals.append("⚠️ 수익률 곡선 역전 중. 경기 침체 가능성 주시 필요.")
 
     if not signals:
         signals.append("뚜렷한 유동성 방향 신호 없음. 관망 유지.")

@@ -191,6 +191,40 @@
             </div>
         </div>
 
+        <!-- 선행지표 카드 -->
+        <div class="row g-3 mb-4">
+            <div class="col-12">
+                <div class="section-title mb-2" style="font-size:.72rem;">선행지표</div>
+            </div>
+            <div class="col-4">
+                <div class="summary-card card h-100">
+                    <div class="card-body text-center py-3">
+                        <div class="text-muted" style="font-size:.68rem;font-weight:600;">달러(DXY)</div>
+                        <div id="dxy-value" class="fw-bold fs-6 mt-1">—</div>
+                        <div id="dxy-change" class="fw-semibold" style="font-size:.75rem;">—</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="summary-card card h-100">
+                    <div class="card-body text-center py-3">
+                        <div class="text-muted" style="font-size:.68rem;font-weight:600;">공포지수(VIX)</div>
+                        <div id="vix-value" class="fw-bold fs-6 mt-1">—</div>
+                        <div id="vix-change" class="fw-semibold" style="font-size:.75rem;">—</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="summary-card card h-100">
+                    <div class="card-body text-center py-3">
+                        <div class="text-muted" style="font-size:.68rem;font-weight:600;">장단기 금리차</div>
+                        <div id="yield_spread-value" class="fw-bold fs-6 mt-1">—</div>
+                        <div id="yield_spread-change" class="fw-semibold" style="font-size:.75rem;">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 스택 영역 차트 -->
         <div class="card section-card mb-4">
             <div class="card-body">
@@ -258,6 +292,9 @@ const COLORS = {
     crypto: '#8b5cf6',
     commodities: '#14b8a6',
     m2: '#1e293b',
+    dxy: '#ef4444',
+    vix: '#dc2626',
+    yield_spread: '#06b6d4',
 };
 const LABELS = {
     m2: '글로벌 M2',
@@ -267,6 +304,9 @@ const LABELS = {
     gold: '금',
     crypto: '코인',
     commodities: '원자재',
+    dxy: '달러(DXY)',
+    vix: '공포지수(VIX)',
+    yield_spread: '장단기 금리차',
 };
 const ICONS = {
     m2: 'bank',
@@ -276,6 +316,9 @@ const ICONS = {
     gold: 'gem',
     crypto: 'currency-bitcoin',
     commodities: 'droplet-half',
+    dxy: 'currency-dollar',
+    vix: 'exclamation-triangle',
+    yield_spread: 'bar-chart-line',
 };
 
 let stackedChart = null;
@@ -305,7 +348,7 @@ async function loadLiquidity(days = 365) {
 
 // ── 요약 카드 ──
 function renderSummaryCards(current) {
-    const keys = ['m2', 'stocks', 'bonds', 'mmf', 'gold', 'crypto'];
+    const keys = ['m2', 'stocks', 'bonds', 'mmf', 'gold', 'crypto', 'dxy', 'vix', 'yield_spread'];
     keys.forEach(key => {
         const d = current[key] || {};
         const valEl = document.getElementById(`${key}-value`);
@@ -317,6 +360,9 @@ function renderSummaryCards(current) {
             if (key === 'm2') valText = `$${(d.value / 1000).toFixed(1)}조`;
             else if (key === 'mmf') valText = `$${(d.value / 1e6).toFixed(2)}조`;
             else if (key === 'crypto') valText = `$${d.value.toFixed(2)}조`;
+            else if (key === 'yield_spread') valText = `${d.value.toFixed(2)}%`;
+            else if (key === 'vix') valText = d.value.toFixed(1);
+            else if (key === 'dxy') valText = d.value.toFixed(1);
             else valText = `$${d.value.toFixed(1)}`;
         }
         valEl.textContent = valText;
@@ -324,7 +370,14 @@ function renderSummaryCards(current) {
         const chg = d.change_pct || 0;
         const sign = chg >= 0 ? '+' : '';
         chgEl.textContent = `${sign}${chg.toFixed(1)}%`;
-        chgEl.style.color = chg > 0 ? 'var(--color-up)' : chg < 0 ? 'var(--color-down)' : 'var(--color-neutral)';
+        // DXY는 반대: 강세(↑)=빨강, 약세(↓)=초록
+        if (key === 'dxy') {
+            chgEl.style.color = chg > 0 ? 'var(--color-down)' : chg < 0 ? 'var(--color-up)' : 'var(--color-neutral)';
+        } else if (key === 'vix') {
+            chgEl.style.color = chg > 0 ? 'var(--color-down)' : chg < 0 ? 'var(--color-up)' : 'var(--color-neutral)';
+        } else {
+            chgEl.style.color = chg > 0 ? 'var(--color-up)' : chg < 0 ? 'var(--color-down)' : 'var(--color-neutral)';
+        }
     });
 }
 
@@ -478,7 +531,7 @@ function renderSankey(sankey) {
 // ── 코멘트 렌더링 ──
 function renderComments(comments) {
     const list = document.getElementById('comments-list');
-    const keys = ['m2', 'stocks', 'bonds', 'mmf', 'gold', 'crypto', 'commodities'];
+    const keys = ['dxy', 'vix', 'yield_spread', 'm2', 'stocks', 'bonds', 'mmf', 'gold', 'crypto', 'commodities'];
     let html = '';
 
     keys.forEach(key => {
