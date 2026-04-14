@@ -68,26 +68,9 @@ def _yahoo_history(ticker: str, days: int = 365) -> List[Dict[str, Any]]:
 
 # ── CoinGecko ─────────────────────────────────────────────────────────────────
 
-def _coingecko_total_market_cap(days: int = 365) -> List[Dict[str, Any]]:
-    """CoinGecko에서 크립토 총 시총 시계열을 가져온다."""
-    try:
-        res = requests.get(
-            "https://api.coingecko.com/api/v3/global/market_cap_chart",
-            params={"days": days, "vs_currency": "usd"},
-            timeout=15,
-        )
-        res.raise_for_status()
-        data = res.json().get("market_cap_chart", {}).get("market_cap", [])
-        return [
-            {
-                "date": datetime.fromtimestamp(item[0] / 1000).strftime("%Y-%m-%d"),
-                "value": item[1] / 1e12,  # 조 달러 단위
-            }
-            for item in data
-        ]
-    except Exception as e:
-        logger.error(f"CoinGecko 총 시총 조회 실패: {e}")
-        return []
+def _crypto_proxy(days: int = 365) -> List[Dict[str, Any]]:
+    """BTC 가격을 크립토 시장 대리지표로 사용한다 (Yahoo Finance)."""
+    return _yahoo_history("BTC-USD", days)
 
 
 # ── 데이터 수집 통합 ──────────────────────────────────────────────────────────
@@ -131,7 +114,7 @@ def get_liquidity_flow(days: int = 365) -> Dict[str, Any]:
         "bonds": _yahoo_history("TLT", days),          # 장기국채 ETF
         "gold": _yahoo_history("GLD", days),            # 금 ETF
         "commodities": _yahoo_history("DBC", days),     # 원자재 ETF
-        "crypto": _coingecko_total_market_cap(days),    # 크립토 총 시총
+        "crypto": _crypto_proxy(days),                    # BTC 가격 (크립토 대리지표)
         # 선행지표
         "dxy": _yahoo_history("DX-Y.NYB", days),       # 달러 인덱스
         "vix": _yahoo_history("^VIX", days),            # 공포지수

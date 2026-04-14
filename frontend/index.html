@@ -1313,10 +1313,10 @@ async function loadDashboard() {
         // 로컬 캐시 저장
         saveToLocalCache(portfolio, analytics);
 
-        // 업비트 API 키 미설정 / 오류 안내
-        if (portfolio.sync_error) {
+        // 업비트 API 오류: 자산이 없을 때만 표시 (캐시 데이터 있으면 무시)
+        if (portfolio.sync_error && (!portfolio.assets || portfolio.assets.length === 0)) {
             const banner = document.getElementById('error-banner');
-            banner.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>업비트 연동 오류:</strong> ${portfolio.sync_error}<br><small class="text-muted">backend/.env에 UPBIT_ACCESS_KEY / UPBIT_SECRET_KEY를 설정하면 실제 데이터가 표시됩니다.</small>`;
+            banner.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>업비트 연동 오류:</strong> ${portfolio.sync_error}<br><small class="text-muted">네트워크를 확인하거나, backend/.env에 UPBIT_ACCESS_KEY를 확인해주세요.</small>`;
             banner.classList.remove('d-none');
         }
 
