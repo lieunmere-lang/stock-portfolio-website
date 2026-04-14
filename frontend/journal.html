@@ -128,54 +128,7 @@
 </head>
 <body class="has-sidebar">
 
-<!-- Sidebar -->
-<aside id="sidebar" class="offcanvas-lg offcanvas-start" tabindex="-1">
-    <div class="offcanvas-header border-bottom">
-        <span class="fw-bold"><i class="bi bi-bar-chart-line-fill text-primary"></i> My Portfolio</span>
-        <button type="button" class="btn-close d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#sidebar"></button>
-    </div>
-    <nav class="offcanvas-body d-flex flex-column p-0">
-        <a href="/" class="sidebar-link"><i class="bi bi-speedometer2 me-2"></i>대시보드</a>
-
-        <div class="sidebar-group-label">개인종목</div>
-        <div id="sidebar-assets"></div>
-
-        <div class="sidebar-group-label">분석</div>
-        <a href="/news.html" class="sidebar-link"><i class="bi bi-newspaper me-2"></i>뉴스 리포트</a>
-        <a href="/market.html" class="sidebar-link"><i class="bi bi-globe me-2"></i>시장 상황판</a>
-
-        <div class="sidebar-group-label">도구</div>
-        <span class="sidebar-link disabled">가격 알림 <span class="badge text-bg-light">준비중</span></span>
-        <a href="/rebalance.html" class="sidebar-link"><i class="bi bi-sliders me-2"></i>리밸런싱</a>
-        <a href="/journal.html" class="sidebar-link active"><i class="bi bi-journal-text me-2"></i>트레이드 저널</a>
-        <span class="sidebar-link disabled">수익 실현 계산기 <span class="badge text-bg-light">준비중</span></span>
-
-        <div class="sidebar-group-label">기타</div>
-        <span class="sidebar-link disabled">설정 <span class="badge text-bg-light">준비중</span></span>
-
-        <div class="sidebar-footer">
-            <button onclick="logout()" class="btn btn-sm btn-outline-secondary w-100">
-                <i class="bi bi-box-arrow-right"></i> 로그아웃
-            </button>
-        </div>
-    </nav>
-</aside>
-
-<!-- Navbar (mobile) -->
-<nav class="navbar navbar-light bg-white border-bottom px-3 py-2 d-lg-none">
-    <button class="btn btn-sm" type="button"
-            data-bs-toggle="offcanvas" data-bs-target="#sidebar"
-            aria-controls="sidebar" aria-label="메뉴 열기">
-        <i class="bi bi-list fs-4"></i>
-    </button>
-    <span class="fw-semibold fs-6">트레이드 저널</span>
-    <span style="width:32px"></span>
-            <i class="bi bi-list"></i>
-        </button>
-        <span class="navbar-brand mb-0 fw-bold">트레이드 저널</span>
-        <div></div>
-    </div>
-</nav>
+<script src="/js/sidebar.js"></script>
 
 <!-- Loading -->
 <div id="loading-overlay">

@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -182,9 +182,46 @@ def backfill_historical_snapshots(assets: List[Dict]) -> None:
 
 
 # 업비트 자산 최초 매수일 (API에서 제공하지 않으므로 수동 매핑)
-UPBIT_PURCHASE_DATES = {
+# 수동 최초 매수일 매핑 (업비트 + 주식 공통)
+MANUAL_PURCHASE_DATES = {
+    # 암호화폐
     "KRW-BTC": datetime(2022, 4, 18),
+    "KRW-ETH2": datetime(2023, 3, 1),
+    "KRW-SOL": datetime(2023, 3, 2),
+    # 주식
+    "TSLA": datetime(2021, 5, 18),
+    "PLTR": datetime(2021, 4, 14),
+    "CRCL": datetime(2026, 2, 1),
+    "TEM": datetime(2026, 2, 17),
+    "IREN": datetime(2026, 2, 17),
+    "RKLB": datetime(2026, 3, 13),
 }
+
+# Bitmine은 별도 티커 확인 필요 시 추가
+# "BMINE": datetime(2026, 1, 24),
+
+
+def _get_first_trade_date(ticker: str) -> Optional[datetime]:
+    """트레이드 저널에서 해당 종목의 최초 매수일을 조회한다."""
+    from database import TradeRecord
+    with Session(engine) as db:
+        record = (
+            db.query(TradeRecord)
+            .filter(TradeRecord.ticker == ticker, TradeRecord.side == "buy")
+            .order_by(TradeRecord.traded_at.asc())
+            .first()
+        )
+        return record.traded_at if record else None
+
+
+def get_first_purchase_date(ticker: str) -> Optional[datetime]:
+    """수동 매핑 → 트레이드 저널 순으로 최초 매수일을 결정한다."""
+    if ticker in MANUAL_PURCHASE_DATES:
+        return MANUAL_PURCHASE_DATES[ticker]
+    return _get_first_trade_date(ticker)
+
+# 하위 호환
+UPBIT_PURCHASE_DATES = MANUAL_PURCHASE_DATES
 
 
 def sync_portfolio() -> None:
@@ -193,10 +230,11 @@ def sync_portfolio() -> None:
 
     try:
         raw_assets = fetch_upbit_assets()
-        # 업비트 자산에 수동 매핑된 매수일 주입
+        # 업비트 자산에 최초 매수일 주입 (수동 매핑 → 트레이드 저널)
         for a in raw_assets:
-            if a["ticker"] in UPBIT_PURCHASE_DATES:
-                a["first_purchase_date"] = UPBIT_PURCHASE_DATES[a["ticker"]]
+            fpd = get_first_purchase_date(a["ticker"])
+            if fpd:
+                a["first_purchase_date"] = fpd
     except Exception as e:
         print(f"[Sync] 업비트 데이터 조회 실패: {e}")
         # 이전 캐시 유지 (있으면), 없으면 빈 포트폴리오로 초기화
@@ -240,7 +278,7 @@ def sync_portfolio() -> None:
                     "quantity": m.quantity,
                     "avg_price": m.avg_price,
                     "current_price": cur_price,
-                    "first_purchase_date": m.first_purchase_date,
+                    "first_purchase_date": m.first_purchase_date or get_first_purchase_date(m.ticker),
                     "signed_change_price": float(ticker_data["signed_change_price"]),
                     "signed_change_rate": float(ticker_data["signed_change_rate"]),
                 })
@@ -276,7 +314,7 @@ def sync_portfolio() -> None:
                         "current_price": cur_price_krw,
                         "avg_price_usd": s.avg_price,
                         "current_price_usd": cur_price_usd,
-                        "first_purchase_date": s.first_purchase_date,
+                        "first_purchase_date": s.first_purchase_date or get_first_purchase_date(s.ticker),
                         "asset_type": "stock",
                         "signed_change_price": signed_change_price,
                         "signed_change_rate": signed_change_rate,

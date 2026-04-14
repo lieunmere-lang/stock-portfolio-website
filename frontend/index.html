@@ -181,53 +181,7 @@
 </head>
 <body class="has-sidebar">
 
-<!-- Sidebar navigation -->
-<aside id="sidebar" class="offcanvas-lg offcanvas-start" tabindex="-1" aria-labelledby="sidebar-label">
-    <div class="offcanvas-header border-bottom">
-        <span id="sidebar-label" class="fw-bold">
-            <i class="bi bi-bar-chart-line-fill text-primary"></i> My Portfolio
-        </span>
-        <button type="button" class="btn-close d-lg-none"
-                data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close"></button>
-    </div>
-    <nav class="offcanvas-body d-flex flex-column p-0">
-        <a href="/" class="sidebar-link active"><i class="bi bi-speedometer2 me-2"></i>대시보드</a>
-
-        <div class="sidebar-group-label">개인종목</div>
-        <div id="sidebar-assets"></div>
-
-        <div class="sidebar-group-label">분석</div>
-        <a href="/news.html" class="sidebar-link"><i class="bi bi-newspaper me-2"></i>뉴스 리포트</a>
-        <a href="/market.html" class="sidebar-link"><i class="bi bi-globe me-2"></i>시장 상황판</a>
-
-        <div class="sidebar-group-label">도구</div>
-        <span class="sidebar-link disabled">가격 알림 <span class="badge text-bg-light">준비중</span></span>
-        <a href="/rebalance.html" class="sidebar-link"><i class="bi bi-sliders me-2"></i>리밸런싱</a>
-        <a href="/journal.html" class="sidebar-link"><i class="bi bi-journal-text me-2"></i>트레이드 저널</a>
-        <span class="sidebar-link disabled">수익 실현 계산기 <span class="badge text-bg-light">준비중</span></span>
-
-        <div class="sidebar-group-label">기타</div>
-        <span class="sidebar-link disabled">설정 <span class="badge text-bg-light">준비중</span></span>
-
-        <div class="sidebar-footer">
-            <span id="last-synced" class="text-muted small d-block mb-2"></span>
-            <button onclick="logout()" class="btn btn-sm btn-outline-secondary w-100">
-                <i class="bi bi-box-arrow-right"></i> 로그아웃
-            </button>
-        </div>
-    </nav>
-</aside>
-
-<!-- Mobile navbar (only visible <992px) -->
-<nav class="navbar navbar-light bg-white border-bottom px-3 py-2 d-lg-none">
-    <button class="btn btn-sm" type="button"
-            data-bs-toggle="offcanvas" data-bs-target="#sidebar"
-            aria-controls="sidebar" aria-label="메뉴 열기">
-        <i class="bi bi-list fs-4"></i>
-    </button>
-    <span class="fw-bold">My Portfolio</span>
-    <span style="width:32px"></span>
-</nav>
+<script src="/js/sidebar.js"></script>
 
 <!-- Skeleton / Loading -->
 <div id="skeleton-overlay" class="p-4">
@@ -322,57 +276,6 @@
         <div id="news-preview-meta" class="text-muted" style="font-size:.72rem;"></div>
     </div>
 
-    <!-- ② 수익률 분석 -->
-    <div class="row g-3 mb-4">
-        <!-- 기간별 수익률 -->
-        <div class="col-12 col-lg-5">
-            <div class="section-card bg-white p-4 h-100">
-                <div id="returns">
-                    <div class="section-title">수익률 분석</div>
-                    <!-- 기간별 수익률 -->
-                    <div class="d-flex flex-nowrap justify-content-between mb-4" id="period-returns-row">
-                        <span class="text-muted" style="font-size:.8rem;">데이터 로딩 중...</span>
-                    </div>
-                </div>
-                <div class="section-title">시장 지표</div>
-                <div class="row g-2">
-                    <div class="col-6">
-                        <div class="p-3 rounded-3" style="background:#f8fafc;">
-                            <div class="text-muted" style="font-size:.72rem;font-weight:600;">공포탐욕지수</div>
-                            <div class="d-flex align-items-baseline gap-2">
-                                <div id="card-fng" class="fw-bold fs-5 mt-1">—</div>
-                                <div id="card-fng-label" class="text-muted" style="font-size:.7rem;"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="p-3 rounded-3" style="background:#f8fafc;">
-                            <div class="text-muted" style="font-size:.72rem;font-weight:600;">USD/KRW</div>
-                            <div id="card-usdkrw" class="fw-bold fs-5 mt-1">—</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- 누적 수익률 차트 -->
-        <div class="col-12 col-lg-7">
-            <div class="section-card bg-white p-4 h-100">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="section-title mb-0">누적 수익률</div>
-                    <div class="btn-group btn-group-sm" id="history-period-btns">
-                        <button class="btn btn-outline-secondary" data-days="30">1개월</button>
-                        <button class="btn btn-outline-secondary active" data-days="90">3개월</button>
-                        <button class="btn btn-outline-secondary" data-days="180">6개월</button>
-                        <button class="btn btn-outline-secondary" data-days="365">1년</button>
-                    </div>
-                </div>
-                <div class="chart-wrap" style="height:240px;">
-                    <canvas id="cumulative-chart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- ③ 보유 현황 테이블 -->
     <div id="holdings" class="section-card bg-white mb-4">
         <div class="p-4 pb-0">
@@ -417,22 +320,79 @@
         </div>
     </div>
 
+    <!-- ② 수익률 분석 -->
+    <div class="row g-3 mb-4">
+        <!-- 기간별 수익률 -->
+        <div class="col-12 col-lg-5">
+            <div class="section-card bg-white p-4 h-100">
+                <div id="returns">
+                    <div class="section-title">수익률 분석</div>
+                    <!-- 기간별 수익률 -->
+                    <div class="d-flex flex-nowrap justify-content-between mb-4" id="period-returns-row">
+                        <span class="text-muted" style="font-size:.8rem;">데이터 로딩 중...</span>
+                    </div>
+                </div>
+                <div class="section-title">시장 지표</div>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="p-3 rounded-3" style="background:#f8fafc;">
+                            <div class="text-muted" style="font-size:.72rem;font-weight:600;">공포탐욕지수</div>
+                            <div class="d-flex align-items-baseline gap-2">
+                                <div id="card-fng" class="fw-bold fs-5 mt-1">—</div>
+                                <div id="card-fng-label" class="text-muted" style="font-size:.7rem;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 rounded-3" style="background:#f8fafc;">
+                            <div class="text-muted" style="font-size:.72rem;font-weight:600;">USD/KRW</div>
+                            <div id="card-usdkrw" class="fw-bold fs-5 mt-1">—</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 누적 수익률 차트 -->
+        <div class="col-12 col-lg-7">
+            <div class="section-card bg-white p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="section-title mb-0">누적 수익률</div>
+                    <div class="btn-group btn-group-sm" id="history-period-btns">
+                        <button class="btn btn-outline-secondary active" data-days="30">1개월</button>
+                        <button class="btn btn-outline-secondary" data-days="90">3개월</button>
+                        <button class="btn btn-outline-secondary" data-days="180">6개월</button>
+                        <button class="btn btn-outline-secondary" data-days="365">1년</button>
+                    </div>
+                </div>
+                <div class="chart-wrap" style="position:relative;height:240px;">
+                    <canvas id="cumulative-chart" style="width:100%;height:100%;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ④ 자산 배분 -->
     <div id="allocation" class="row g-3 mb-4">
         <!-- 도넛 차트 -->
         <div class="col-12 col-md-5">
             <div class="section-card bg-white p-4 h-100">
                 <div class="section-title">종목별 비중</div>
-                <div class="chart-wrap" style="height:260px;">
+                <div class="chart-wrap" style="height:350px;">
                     <canvas id="allocation-chart"></canvas>
                 </div>
+                <div id="allocation-legend" style="margin-top:16px;display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;"></div>
             </div>
         </div>
-        <!-- 트리맵 -->
+        <!-- 코인/주식 비중 -->
         <div class="col-12 col-md-7">
             <div class="section-card bg-white p-4 h-100">
-                <div class="section-title">자산 트리맵</div>
-                <div id="treemap-container" class="treemap-container"></div>
+                <div class="section-title">코인 / 주식 비중</div>
+                <div class="text-center">
+                    <div class="chart-wrap mx-auto" style="width:220px;height:220px;">
+                        <canvas id="asset-type-chart"></canvas>
+                    </div>
+                    <div id="asset-type-detail" style="font-size:.85rem;margin-top:16px;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -446,18 +406,11 @@
                 <div id="top5-list"></div>
             </div>
         </div>
-        <!-- 상관관계 매트릭스 -->
+        <!-- 보유기간 타임라인 -->
         <div class="col-12 col-md-7">
             <div class="section-card bg-white p-4 h-100">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="section-title mb-0">상관관계 매트릭스</div>
-                    <button id="corr-refresh-btn" class="btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-arrow-repeat"></i> 불러오기
-                    </button>
-                </div>
-                <div id="corr-container">
-                    <p class="text-muted" style="font-size:.8rem;">버튼을 눌러 CoinGecko 데이터를 불러오세요.</p>
-                </div>
+                <div class="section-title">보유기간 타임라인</div>
+                <div id="timeline-container"></div>
             </div>
         </div>
     </div>
@@ -528,7 +481,7 @@ let portfolioData = null;
 let analyticsData = null;
 let allocationChart = null;
 let cumulativeChart = null;
-let currentHistoryDays = 90;
+let currentHistoryDays = 30;
 
 // ── Flash highlight ──────────────────────────────────────────────────────────
 function snapshotFlashTargets() {
@@ -592,6 +545,7 @@ async function apiFetch(url) {
 // ── Sidebar asset list ────────────────────────────────────────────────────────
 function renderSidebarAssets(assets) {
     const wrap = document.getElementById('sidebar-assets');
+    if (!wrap) return;
     if (!assets.length) { wrap.innerHTML = '<span class="sidebar-stock" style="color:#cbd5e1;padding-left:1.8rem;font-size:.75rem;">종목 없음</span>'; return; }
     wrap.innerHTML = assets.map(a => {
         const type = a.asset_type === 'stock' ? 'stock' : 'coin';
@@ -772,24 +726,27 @@ document.getElementById('holdings-head').addEventListener('click', e => {
 });
 
 function renderAllocationChart(assets) {
-    const labels = assets.map(a => a.ticker.replace('KRW-', ''));
-    const values = assets.map(a => a.total_value);
+    // 비중 높은 순 정렬 (12시 방향부터 시계방향으로)
+    const sorted = [...assets].sort((a, b) => b.total_value - a.total_value);
+    const labels = sorted.map(a => a.ticker.replace('KRW-', ''));
+    const values = sorted.map(a => a.total_value);
     const COLORS = ['#3b82f6','#14b8a6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f97316','#a78bfa'];
 
     const totalVal = values.reduce((s,v)=>s+v,0);
 
     const datalabelsOpts = {
         color: '#334155',
-        font: { weight: '600', size: 11 },
+        font: { weight: '600', size: 10 },
         formatter: (value, ctx) => {
             const pct = (value / totalVal * 100);
-            if (pct < 3) return '';
-            return `${labels[ctx.dataIndex]}\n${pct.toFixed(1)}%`;
+            return `${labels[ctx.dataIndex]} ${pct.toFixed(1)}%`;
         },
         anchor: 'end',
         align: 'end',
-        offset: 8,
+        offset: 10,
         textAlign: 'center',
+        clip: false,
+        padding: 4,
     };
 
     if (!allocationChart) {
@@ -801,8 +758,9 @@ function renderAllocationChart(assets) {
             },
             plugins: [ChartDataLabels],
             options: {
-                cutout: '60%',
-                layout: { padding: 30 },
+                rotation: -110,
+                cutout: '50%',
+                layout: { padding: 60 },
                 plugins: {
                     legend: { display: false },
                     tooltip: { callbacks: { label: ctx => {
@@ -823,23 +781,79 @@ function renderAllocationChart(assets) {
         };
         allocationChart.update();
     }
+
+    // HTML 범례 렌더링 (차트 아래 별도 영역)
+    const legendEl = document.getElementById('allocation-legend');
+    if (legendEl) {
+        legendEl.innerHTML = labels.map((label, i) => {
+            const pct = (values[i] / totalVal * 100).toFixed(1);
+            return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:.78rem;font-weight:600;color:#334155;">
+                <span style="width:10px;height:10px;border-radius:50%;background:${COLORS[i % COLORS.length]};flex-shrink:0;"></span>
+                ${label} ${pct}%
+            </span>`;
+        }).join('');
+    }
 }
 
-function renderTreemap(assets) {
-    const container = document.getElementById('treemap-container');
-    container.innerHTML = '';
-    const total = assets.reduce((s,a)=>s+a.total_value,0) || 1;
-    const COLORS = ['#3b82f6','#14b8a6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f97316','#a78bfa'];
-    const sorted = [...assets].sort((a,b)=>b.total_value - a.total_value);
-    sorted.forEach((a, i) => {
-        const pct = a.total_value / total * 100;
-        const tile = document.createElement('div');
-        tile.className = 'treemap-tile';
-        tile.style.cssText = `width:calc(${pct}% - 4px);min-width:60px;height:80px;background:${COLORS[i%COLORS.length]};`;
-        const plSign = a.profit_loss >= 0 ? '+' : '';
-        tile.innerHTML = `<div><div>${a.ticker.replace('KRW-','')}</div><div style="font-size:.65rem;opacity:.85;">${pct.toFixed(1)}%</div><div style="font-size:.65rem;opacity:.85;">${plSign}${(a.profit_loss_rate*100).toFixed(1)}%</div></div>`;
-        container.appendChild(tile);
+let assetTypeChart = null;
+function renderAssetTypeChart(assets) {
+    const groups = {};
+    assets.forEach(a => {
+        const type = a.asset_type === 'crypto' ? '코인' : '주식';
+        if (!groups[type]) groups[type] = { value: 0, profit: 0, items: [] };
+        groups[type].value += a.total_value;
+        groups[type].profit += a.profit_loss;
+        groups[type].items.push(a);
     });
+
+    const labels = Object.keys(groups);
+    const values = labels.map(l => groups[l].value);
+    const totalVal = values.reduce((s,v) => s+v, 0) || 1;
+    const COLORS = { '코인': '#f59e0b', '주식': '#3b82f6' };
+    const colors = labels.map(l => COLORS[l] || '#94a3b8');
+
+    const ctx = document.getElementById('asset-type-chart');
+    if (assetTypeChart) assetTypeChart.destroy();
+    assetTypeChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }]
+        },
+        plugins: [ChartDataLabels],
+        options: {
+            cutout: '55%',
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c => ` ${c.label}: ${(c.parsed/totalVal*100).toFixed(1)}%` }},
+                datalabels: {
+                    color: '#fff',
+                    font: { weight: '700', size: 13 },
+                    formatter: (value, c) => `${labels[c.dataIndex]}\n${(value/totalVal*100).toFixed(1)}%`,
+                    textAlign: 'center',
+                }
+            },
+            maintainAspectRatio: false,
+        }
+    });
+
+    // 상세 정보 (차트 아래 가로 배치)
+    const detail = document.getElementById('asset-type-detail');
+    detail.innerHTML = `<div class="d-flex justify-content-center gap-4 flex-wrap">` +
+    labels.map(l => {
+        const g = groups[l];
+        const pct = (g.value / totalVal * 100).toFixed(1);
+        const plSign = g.profit >= 0 ? '+' : '';
+        const plColor = g.profit >= 0 ? 'var(--color-up)' : 'var(--color-down)';
+        const tickers = g.items.sort((a,b) => b.total_value - a.total_value)
+            .map(a => a.ticker.replace('KRW-','')).join(', ');
+        return `<div style="text-align:center;">
+            <div style="font-weight:700;color:${COLORS[l]};font-size:.9rem;">${l} ${pct}%</div>
+            <div style="font-size:.8rem;color:#334155;">${KRW(g.value)}</div>
+            <div style="font-size:.8rem;color:${plColor};font-weight:600;">${plSign}${KRW(g.profit)}</div>
+            <div style="font-size:.72rem;color:#94a3b8;margin-top:2px;">${tickers}</div>
+        </div>`;
+    }).join('') + `</div>`;
 }
 
 function renderTop5(top5) {
@@ -940,110 +954,108 @@ async function renderCumulativeChart(days) {
             },
         };
 
-        if (!cumulativeChart) {
-            cumulativeChart = new Chart(document.getElementById('cumulative-chart'), {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                        data: returns,
-                        borderColor: lineColor,
-                        backgroundColor: bgColor,
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 0,
-                        pointHoverRadius: 4,
-                        borderWidth: 2,
-                    }]
+        if (cumulativeChart) cumulativeChart.destroy();
+        // 캔버스 재생성 (destroy 후 캔버스 상태 보장)
+        const wrap = document.getElementById('cumulative-chart').parentElement;
+        wrap.innerHTML = '<canvas id="cumulative-chart" style="width:100%;height:100%;"></canvas>';
+        cumulativeChart = new Chart(document.getElementById('cumulative-chart'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    data: returns,
+                    backgroundColor: returns.map(v => v >= 0 ? 'rgba(22,163,74,0.7)' : 'rgba(220,38,38,0.7)'),
+                    borderColor: returns.map(v => v >= 0 ? '#16a34a' : '#dc2626'),
+                    borderWidth: 1,
+                    borderRadius: 2,
+                }]
+            },
+            options: {
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: tooltipCallbacks },
                 },
-                options: {
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { callbacks: tooltipCallbacks },
-                    },
-                    scales: {
-                        x: {
-                            ticks: {
-                                maxTicksLimit: axisConfig.maxTicksLimit,
-                                font: { size: 10 },
-                                maxRotation: 0,
-                            },
-                            grid: { display: false },
+                scales: {
+                    x: {
+                        ticks: {
+                            maxTicksLimit: axisConfig.maxTicksLimit,
+                            font: { size: 10 },
+                            maxRotation: 0,
                         },
-                        y: {
-                            ticks: {
-                                callback: v => `${v >= 0 ? '+' : ''}${v}%`,
-                                font: { size: 10 },
-                            },
-                            grid: { color: '#f1f5f9' },
-                        },
+                        grid: { display: false },
                     },
-                    maintainAspectRatio: false,
-                }
-            });
-        } else {
-            const opts = cumulativeChart.options.scales.x.ticks;
-            opts.maxTicksLimit = axisConfig.maxTicksLimit;
-            cumulativeChart.options.plugins.tooltip.callbacks = tooltipCallbacks;
-            cumulativeChart.data.labels = labels;
-            cumulativeChart.data.datasets[0].data = returns;
-            cumulativeChart.data.datasets[0].borderColor = lineColor;
-            cumulativeChart.data.datasets[0].backgroundColor = bgColor;
-            cumulativeChart.update();
-        }
+                    y: {
+                        ticks: {
+                            callback: v => `${v >= 0 ? '+' : ''}${v}%`,
+                            font: { size: 10 },
+                        },
+                        grid: { color: '#f1f5f9' },
+                    },
+                },
+                maintainAspectRatio: false,
+            }
+        });
     } catch (e) {
         console.error('history chart error:', e);
     }
 }
 
-async function renderCorrelationMatrix() {
-    const container = document.getElementById('corr-container');
-    container.innerHTML = '<p class="text-muted" style="font-size:.8rem;"><i class="bi bi-arrow-repeat spin"></i> 상관관계 데이터 로딩 중...</p>';
-    try {
-        const data = await apiFetch('/api/analytics/correlation');
-        if (!data.tickers || !data.tickers.length) {
-            container.innerHTML = '<p class="text-muted" style="font-size:.8rem;">데이터를 불러올 수 없습니다. (API 제한 또는 종목 미지원)</p>';
-            return;
-        }
-        const { tickers, matrix } = data;
-        let html = '<div class="table-responsive"><table class="table corr-table table-bordered mb-0"><thead><tr><th></th>';
-        tickers.forEach(t => html += `<th>${t}</th>`);
-        html += '</tr></thead><tbody>';
-        matrix.forEach((row, i) => {
-            html += `<tr><th>${tickers[i]}</th>`;
-            row.forEach((val, j) => {
-                const bg = corrColor(val);
-                const textColor = (val != null && Math.abs(val) > 0.6) ? '#fff' : '#334155';
-                const isSelf = i === j;
-                html += `<td style="background:${bg};font-size:.72rem;color:${textColor};font-weight:${isSelf ? '700' : '500'};">${val != null ? val.toFixed(2) : '—'}</td>`;
-            });
-            html += '</tr>';
-        });
-        html += '</tbody></table></div>';
-        // 범례 추가
-        html += `<div class="d-flex align-items-center gap-3 mt-2" style="font-size:.7rem;color:#64748b;">
-            <span>강한 음의 상관</span>
-            <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;width:120px;">
-                <div style="flex:1;background:rgba(59,130,246,0.7);"></div>
-                <div style="flex:1;background:rgba(59,130,246,0.3);"></div>
-                <div style="flex:1;background:#f8fafc;"></div>
-                <div style="flex:1;background:rgba(220,38,38,0.3);"></div>
-                <div style="flex:1;background:rgba(220,38,38,0.7);"></div>
-            </div>
-            <span>강한 양의 상관</span>
-        </div>`;
-        container.innerHTML = html;
-    } catch (e) {
-        container.innerHTML = '<p class="text-danger" style="font-size:.8rem;">불러오기 실패: ' + e.message + '</p>';
-    }
-}
+function renderTimeline(assets) {
+    const container = document.getElementById('timeline-container');
+    if (!container) return;
 
-function corrColor(val) {
-    if (val == null) return '#f8fafc';
-    const abs = Math.abs(val);
-    if (val >= 0) return `rgba(220,38,38,${(abs * 0.7).toFixed(2)})`;
-    return `rgba(59,130,246,${(abs * 0.7).toFixed(2)})`;
+    const now = new Date();
+    const items = assets
+        .filter(a => a.first_purchase_date)
+        .map(a => {
+            const start = new Date(a.first_purchase_date);
+            const days = Math.floor((now - start) / 86400000);
+            const years = Math.floor(days / 365);
+            const months = Math.floor((days % 365) / 30);
+            let label = '';
+            if (years > 0) label += `${years}년 `;
+            if (months > 0 || years === 0) label += `${months}개월`;
+            return {
+                name: a.asset_type === 'stock' ? a.ticker : a.ticker.replace('KRW-', ''),
+                start,
+                days,
+                label: label.trim(),
+                plr: a.profit_loss_rate,
+            };
+        })
+        .sort((a, b) => a.start - b.start);
+
+    if (!items.length) {
+        container.innerHTML = '<p class="text-muted" style="font-size:.8rem;">매수일 데이터 없음</p>';
+        return;
+    }
+
+    // 가장 오래 보유한 종목의 일수 = 100%
+    const maxDays = Math.max(...items.map(i => i.days), 1);
+    const COLORS = ['#3b82f6','#14b8a6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f97316','#a78bfa'];
+
+    // 보유기간 긴 순으로 정렬
+    items.sort((a, b) => b.days - a.days);
+
+    let html = '';
+    items.forEach((item, i) => {
+        const barWidth = Math.max((item.days / maxDays * 100), 3).toFixed(1);
+        const color = COLORS[i % COLORS.length];
+        const plSign = item.plr >= 0 ? '+' : '';
+        const plColor = item.plr >= 0 ? 'var(--color-up)' : 'var(--color-down)';
+
+        html += `<div class="d-flex align-items-center gap-2 mb-2" style="font-size:.8rem;">
+            <span class="fw-semibold text-end" style="width:50px;flex-shrink:0;">${item.name}</span>
+            <div style="flex:1;position:relative;height:24px;background:#f1f5f9;border-radius:4px;">
+                <div style="width:${barWidth}%;height:100%;background:${color};border-radius:4px;opacity:.8;"></div>
+                <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.68rem;color:#fff;font-weight:600;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.3);">${item.label}</span>
+            </div>
+            <span style="width:65px;flex-shrink:0;text-align:right;font-size:.72rem;font-weight:600;color:${plColor};">${plSign}${(item.plr*100).toFixed(1)}%</span>
+        </div>`;
+    });
+
+    container.innerHTML = html;
 }
 
 
@@ -1271,14 +1283,15 @@ function renderFromCache() {
     renderHoldingsTable(portfolio.assets);
     if (portfolio.assets.length > 0) {
         renderAllocationChart(portfolio.assets);
-        renderTreemap(portfolio.assets);
+        renderAssetTypeChart(portfolio.assets);
     }
     renderTop5(analytics.top5_contributors);
     document.getElementById('skeleton-overlay').classList.add('d-none');
     document.getElementById('main-content').classList.remove('d-none');
     // 캐시 데이터 표시 알림
     const syncTime = new Date(portfolio.last_synced);
-    document.getElementById('last-synced').textContent =
+    const lastSyncedEl = document.getElementById('last-synced');
+    if (lastSyncedEl) lastSyncedEl.textContent =
         syncTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' (캐시)';
     return true;
 }
@@ -1316,19 +1329,24 @@ async function loadDashboard() {
         renderHoldingsTable(portfolio.assets);
         if (portfolio.assets.length > 0) {
             renderAllocationChart(portfolio.assets);
-            renderTreemap(portfolio.assets);
+            renderAssetTypeChart(portfolio.assets);
         }
         renderTop5(analytics.top5_contributors);
-        await renderCumulativeChart(currentHistoryDays);
+        renderTimeline(portfolio.assets);
 
         // 마지막 업데이트 시각
         const syncTime = new Date(portfolio.last_synced);
-        document.getElementById('last-synced').textContent =
+        const lastSyncedEl = document.getElementById('last-synced');
+        if (lastSyncedEl) lastSyncedEl.textContent =
             syncTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' 업데이트';
 
-        // Skeleton 숨기기
+        // Skeleton 숨기고 콘텐츠 먼저 표시 (차트 캔버스 크기 확보)
         document.getElementById('skeleton-overlay').classList.add('d-none');
         document.getElementById('main-content').classList.remove('d-none');
+
+        // 레이아웃 확정 후 차트 렌더링
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        await renderCumulativeChart(currentHistoryDays);
 
         loadMarketIndicators();  // 비동기 — 공포탐욕, 환율
         loadEarningsCalendar();  // 비동기 — 메인 로딩 블로킹 안함
@@ -1345,7 +1363,6 @@ async function loadDashboard() {
 }
 
 // ── Event listeners ───────────────────────────────────────────────────────────
-document.getElementById('corr-refresh-btn').addEventListener('click', renderCorrelationMatrix);
 document.getElementById('history-period-btns').addEventListener('click', async e => {
     const btn = e.target.closest('button[data-days]');
     if (!btn) return;
@@ -1361,23 +1378,13 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(loadDashboard, 60_000);
 });
 
-// ── Sidebar offcanvas auto-close (모바일) ─────────────────────────────────
-(function initSidebar() {
-    const sidebarEl = document.getElementById('sidebar');
-    document.querySelectorAll('#sidebar .sidebar-link:not(.disabled)').forEach(link => {
-        link.addEventListener('click', () => {
-            if (window.innerWidth < 992 && sidebarEl) {
-                const inst = bootstrap.Offcanvas.getInstance(sidebarEl)
-                           || bootstrap.Offcanvas.getOrCreateInstance(sidebarEl);
-                inst.hide();
-            }
-        });
-    });
-})();
+// Sidebar offcanvas auto-close는 /js/sidebar.js에서 처리
 </script>
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js');
+  navigator.serviceWorker.register('/sw.js').then((reg) => {
+    reg.update();
+  });
 }
 </script>
 </body>
