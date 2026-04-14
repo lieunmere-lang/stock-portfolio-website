@@ -19,6 +19,7 @@ from routers.portfolio import router as portfolio_router
 from routers.rebalance import router as rebalance_router
 from routers.journal import router as journal_router
 from routers.alerts import router as alerts_router
+from routers.liquidity import router as liquidity_router
 from scheduler import start_scheduler, stop_scheduler
 from bot import start_bot, stop_bot
 
@@ -96,6 +97,7 @@ app.include_router(market_router,    dependencies=[Depends(require_auth)])   # /
 app.include_router(rebalance_router, dependencies=[Depends(require_auth)])   # /api/rebalance/* (인증 필요)
 app.include_router(journal_router,   dependencies=[Depends(require_auth)])   # /api/journal/* (인증 필요)
 app.include_router(alerts_router,    dependencies=[Depends(require_auth)])   # /api/alerts/* (인증 필요)
+app.include_router(liquidity_router, dependencies=[Depends(require_auth)])   # /api/liquidity/* (인증 필요)
 
 
 

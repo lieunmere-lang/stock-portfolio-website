@@ -36,6 +36,7 @@
         <div class="sidebar-group-label">분석</div>
         ${link('/news.html', 'newspaper', '뉴스 리포트')}
         ${link('/market.html', 'globe', '시장 상황판')}
+        ${link('/liquidity.html', 'water', '유동성 흐름')}
 
         <div class="sidebar-group-label">도구</div>
         ${link('#', '', '가격 알림', { disabled: true })}
@@ -63,6 +64,7 @@
         '/rebalance.html': '리밸런싱',
         '/journal.html': '트레이드 저널',
         '/simulator.html': '복리 시뮬레이터',
+        '/liquidity.html': '유동성 흐름',
         '/detail.html': '종목 상세',
     };
     const pageTitle = pageTitles[currentPath] || 'My Portfolio';
